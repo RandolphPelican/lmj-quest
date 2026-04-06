@@ -1,20 +1,25 @@
 import Phaser from 'phaser';
-import { TILE_SIZE, ROOM_HEIGHT_TILES, ROOM_PIXEL_WIDTH, TileFlag } from '../shared/tiles';
+import {
+  TILE_SIZE,
+  ROOM_HEIGHT_TILES,
+  ROOM_WIDTH_TILES,
+  ROOM_PIXEL_WIDTH,
+  TileFlag,
+} from '../shared/tiles';
 import { ALL_ROOMS } from '../shared/rooms';
 import type { RoomData, DoorTarget } from '../shared/rooms';
 import { Room } from '../game/Room';
 import { Player, type WASDKeys } from '../game/Player';
 import { HUD } from '../game/HUD';
 import { DebugOverlay } from '../game/DebugOverlay';
+import { Dummy } from '../game/entities/Dummy';
 import type { CharacterDefinition } from '../shared/characters';
 
-// Playfield layout constants
-const HUD_HEIGHT = 80;
-const CANVAS_W   = 800;
+const HUD_HEIGHT  = 80;
+const CANVAS_W    = 800;
 const PLAYFIELD_X = (CANVAS_W - ROOM_PIXEL_WIDTH) / 2;  // 160
 const PLAYFIELD_Y = HUD_HEIGHT;                          // 80
 
-// Direction the player is travelling when they step on a border door
 type SlideDir = 'north' | 'south' | 'east' | 'west';
 
 export class GameScene extends Phaser.Scene {
@@ -30,9 +35,15 @@ export class GameScene extends Phaser.Scene {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd!: WASDKeys;
   private f1Key!: Phaser.Input.Keyboard.Key;
+  private jKey!: Phaser.Input.Keyboard.Key;
+  private pKey!: Phaser.Input.Keyboard.Key;
 
   private transitioning = false;
   private readonly triggeredPlates = new Set<string>();
+
+  // Combat test dummy
+  private currentDummy: Dummy | null = null;
+  private dummyRespawnTimer: Phaser.Time.TimerEvent | null = null;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -45,7 +56,6 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
-    // Input
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.wasd = {
       W: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W),
@@ -56,15 +66,13 @@ export class GameScene extends Phaser.Scene {
     this.f1Key = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.F1);
     this.f1Key.on('down', () => this.debugOverlay.toggle());
 
-    // HUD (create before room so background renders under)
-    this.hud = new HUD(this, this.selectedCharacter);
+    this.jKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.J);
+    this.pKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.P);
 
-    // Debug overlay
+    this.hud = new HUD(this, this.selectedCharacter);
     this.debugOverlay = new DebugOverlay(this);
 
-    // Load starting room, spawn player at center
-    const spawnTile = { x: 7, y: 5 };
-    this.loadRoom(ALL_ROOMS['room_01'], spawnTile);
+    this.loadRoom(ALL_ROOMS['room_01'], { x: 7, y: 5 });
   }
 
   update(): void {
@@ -74,22 +82,52 @@ export class GameScene extends Phaser.Scene {
     const py = this.player.getY();
     const flags = this.currentRoom.getFlagsAt(px, py);
 
-    // Apply terrain effects BEFORE movement so they take effect this frame
     this.player.applyTerrainEffect(flags);
     this.player.update(this.cursors, this.wasd);
 
+    // ── Combat input ──────────────────────────────────────────────────────────
+    if (Phaser.Input.Keyboard.JustDown(this.jKey)) {
+      this.player.trySwingSword();
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.pKey)) {
+      this.player.tryShieldBash();
+    }
+
+    // ── Hit detection ─────────────────────────────────────────────────────────
+    if (this.currentDummy && !this.currentDummy.isDead()) {
+      const swordHitbox = this.player.getSwordHitbox();
+      if (swordHitbox && !this.player.isSwordHitConnected()) {
+        if (this.aabbOverlap(swordHitbox, this.currentDummy.getPhysicsCarrier())) {
+          this.player.markSwordHitConnected();
+          this.currentDummy.takeDamage(20);
+        }
+      }
+
+      const bashHitbox = this.player.getBashHitbox();
+      if (bashHitbox && !this.player.isBashHitConnected()) {
+        if (this.aabbOverlap(bashHitbox, this.currentDummy.getPhysicsCarrier())) {
+          this.player.markBashHitConnected();
+          const dx = this.currentDummy.getX() - this.player.getX();
+          const dy = this.currentDummy.getY() - this.player.getY();
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+          this.currentDummy.takeDamage(15, { x: dx / len, y: dy / len });
+        }
+      }
+    }
+
+    // ── Dummy update ──────────────────────────────────────────────────────────
+    if (this.currentDummy) this.currentDummy.update();
+
+    // ── Tile checks ───────────────────────────────────────────────────────────
     const tx = this.player.getTileX();
     const ty = this.player.getTileY();
 
-    // Door check
     const door = this.currentRoom.getDoorAt(tx, ty);
     if (door) {
-      const dir = this.slideDir(tx, ty);
-      this.startTransition(door, dir);
+      this.startTransition(door, this.slideDir(tx, ty));
       return;
     }
 
-    // Pressure plate check (one-shot per room instance)
     if (flags & TileFlag.PressurePlate) {
       const key = `${tx},${ty}`;
       if (!this.triggeredPlates.has(key)) {
@@ -98,10 +136,14 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    // ── HUD update ────────────────────────────────────────────────────────────
+    this.hud.setHP(this.player.getHP(), this.player.getMaxHP());
+    this.hud.setMP(this.player.getMP(), this.player.getMaxMP());
+
     this.debugOverlay.update(this.player, this.currentRoom);
   }
 
-  // ── Room loading ────────────────────────────────────────────────────────────
+  // ── Room loading ─────────────────────────────────────────────────────────────
 
   private loadRoom(roomData: RoomData, spawnTile: { x: number; y: number }): void {
     const spawnX = PLAYFIELD_X + spawnTile.x * TILE_SIZE + TILE_SIZE / 2;
@@ -129,14 +171,65 @@ export class GameScene extends Phaser.Scene {
 
     this.hud.setRoomName(roomData.name);
     this.triggeredPlates.clear();
+
+    this.spawnDummy(this.currentRoom);
   }
 
-  // ── Room transitions ────────────────────────────────────────────────────────
+  // ── Dummy lifecycle ───────────────────────────────────────────────────────────
+
+  private spawnDummy(room: Room): void {
+    const tile = this.findSafeFloorTile(room);
+    const wx = PLAYFIELD_X + tile.x * TILE_SIZE + TILE_SIZE / 2;
+    const wy = PLAYFIELD_Y + tile.y * TILE_SIZE + TILE_SIZE / 2;
+
+    this.currentDummy = new Dummy(this, wx, wy, () => {
+      this.currentDummy = null;
+      this.dummyRespawnTimer = this.time.delayedCall(2000, () => {
+        this.dummyRespawnTimer = null;
+        this.spawnDummy(this.currentRoom);
+      });
+    });
+  }
+
+  private despawnDummy(): void {
+    if (this.dummyRespawnTimer) {
+      this.dummyRespawnTimer.destroy();
+      this.dummyRespawnTimer = null;
+    }
+    if (this.currentDummy) {
+      this.currentDummy.destroy();
+      this.currentDummy = null;
+    }
+  }
+
+  private findSafeFloorTile(room: Room): { x: number; y: number } {
+    const playerTX = this.player ? this.player.getTileX() : -99;
+    const playerTY = this.player ? this.player.getTileY() : -99;
+    const valid: { x: number; y: number }[] = [];
+
+    for (let ty = 1; ty < ROOM_HEIGHT_TILES - 1; ty++) {
+      for (let tx = 1; tx < ROOM_WIDTH_TILES - 1; tx++) {
+        if (Math.abs(tx - playerTX) <= 1 && Math.abs(ty - playerTY) <= 1) continue;
+        const tileFlags = room.getFlagsAt(
+          PLAYFIELD_X + tx * TILE_SIZE + TILE_SIZE / 2,
+          PLAYFIELD_Y + ty * TILE_SIZE + TILE_SIZE / 2,
+        );
+        if (tileFlags === TileFlag.None) {
+          valid.push({ x: tx, y: ty });
+        }
+      }
+    }
+
+    if (valid.length === 0) return { x: 10, y: 3 };
+    return valid[Math.floor(Math.random() * valid.length)];
+  }
+
+  // ── Room transitions ──────────────────────────────────────────────────────────
 
   private slideDir(tileX: number, tileY: number): SlideDir {
-    if (tileY === 0)                    return 'north';
+    if (tileY === 0)                     return 'north';
     if (tileY === ROOM_HEIGHT_TILES - 1) return 'south';
-    if (tileX === 0)                    return 'west';
+    if (tileX === 0)                     return 'west';
     return 'east';
   }
 
@@ -146,24 +239,20 @@ export class GameScene extends Phaser.Scene {
 
     this.transitioning = true;
     this.player.disableInput();
-
-    // Destroy current collider — player won't move during transition
     this.currentCollider.destroy();
 
-    const oldContainer = this.currentRoom.getContainer();
+    // Tear down old dummy before creating new room
+    this.despawnDummy();
 
-    // Build the new room (physics bodies placed at world coords immediately)
+    const oldContainer = this.currentRoom.getContainer();
     const newRoom = new Room(this, destRoomData, PLAYFIELD_X, PLAYFIELD_Y);
     const newContainer = newRoom.getContainer();
 
-    // Determine slide offsets
     const dx = dir === 'east' ? -CANVAS_W : dir === 'west' ?  CANVAS_W : 0;
     const dy = dir === 'north' ?  600      : dir === 'south' ? -600     : 0;
 
-    // Position new room container off-screen on the opposite side
     newContainer.setPosition(PLAYFIELD_X - dx, PLAYFIELD_Y - dy);
 
-    // Slide old room off
     this.tweens.add({
       targets: oldContainer,
       x: PLAYFIELD_X + dx,
@@ -172,7 +261,6 @@ export class GameScene extends Phaser.Scene {
       ease: 'Quad.easeInOut',
     });
 
-    // Slide new room in
     this.tweens.add({
       targets: newContainer,
       x: PLAYFIELD_X,
@@ -183,12 +271,10 @@ export class GameScene extends Phaser.Scene {
         const oldRoom = this.currentRoom;
         this.currentRoom = newRoom;
 
-        // Reposition player at destination spawn
         const spawnX = PLAYFIELD_X + dest.spawnTile.x * TILE_SIZE + TILE_SIZE / 2;
         const spawnY = PLAYFIELD_Y + dest.spawnTile.y * TILE_SIZE + TILE_SIZE / 2;
         this.player.setPosition(spawnX, spawnY);
 
-        // Wire up new collider
         this.currentCollider = this.physics.add.collider(
           this.player.getPhysicsObject(),
           this.currentRoom.getPhysicsGroup(),
@@ -197,8 +283,10 @@ export class GameScene extends Phaser.Scene {
         this.hud.setRoomName(destRoomData.name);
         this.triggeredPlates.clear();
 
-        // Clean up old room after it has slid off-screen
         oldRoom.destroy();
+
+        // Spawn a fresh dummy in the new room
+        this.spawnDummy(this.currentRoom);
 
         this.player.enableInput();
         this.transitioning = false;
@@ -206,19 +294,29 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  // ── Pressure plate ─────────────────────────────────────────────────────────
+  // ── Pressure plate ────────────────────────────────────────────────────────────
 
   private activatePressurePlate(tileX: number, tileY: number): void {
     this.currentRoom.triggerPressurePlate(tileX, tileY);
 
-    // Brief flash on the plate tile itself
     const rect = this.currentRoom.getVisualRectAt(tileX, tileY);
     if (rect) {
       const origColor = 0x1a4a6a;
       rect.setFillStyle(0x88ddff);
-      this.time.delayedCall(180, () => {
-        rect.setFillStyle(origColor);
-      });
+      this.time.delayedCall(180, () => { rect.setFillStyle(origColor); });
     }
+  }
+
+  // ── Physics helpers ───────────────────────────────────────────────────────────
+
+  private aabbOverlap(
+    a: Phaser.Physics.Arcade.Image,
+    b: Phaser.Physics.Arcade.Image,
+  ): boolean {
+    const ba = a.body;
+    const bb = b.body;
+    if (!ba || !bb) return false;
+    return ba.right > bb.left && ba.left < bb.right
+        && ba.bottom > bb.top && ba.top < bb.bottom;
   }
 }
