@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 import type { Player } from './Player';
 import type { Room } from './Room';
+import type { Enemy } from './entities/Enemy';
 
 const DEPTH = 20;
-const LINE_COUNT = 7;
+const LINE_COUNT = 8;
 
 export class DebugOverlay {
   private readonly scene: Phaser.Scene;
@@ -39,7 +40,7 @@ export class DebugOverlay {
     if (!this.visible) this.graphics.clear();
   }
 
-  update(player: Player, room: Room): void {
+  update(player: Player, room: Room, roomEnemies: Enemy[]): void {
     if (!this.visible) return;
 
     const fps = Math.round(this.scene.game.loop.actualFps);
@@ -51,6 +52,7 @@ export class DebugOverlay {
     const swd = Math.max(0, Math.round(player.getSwordCooldown()));
     const bsh = Math.max(0, Math.round(player.getBashCooldown()));
 
+    const aliveCount = roomEnemies.filter(e => !e.isDead()).length;
     const data = [
       `FPS: ${fps}`,
       `POS: ${px}, ${py}`,
@@ -59,6 +61,7 @@ export class DebugOverlay {
       `[${tiledef.char}] flags:${tiledef.flags}`,
       `MP: ${player.getMP()}/${player.getMaxMP()}`,
       `SWD:${swd}ms  BSH:${bsh}ms`,
+      `ENEMIES: ${aliveCount}`,
     ];
 
     for (let i = 0; i < this.lines.length; i++) {

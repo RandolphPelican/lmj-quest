@@ -52,6 +52,13 @@ export class Player {
   // Prevents mid-swing position override
   private swinging = false;
 
+  // Death / invincibility
+  public onDeath: (() => void) | null = null;
+  private dead = false;
+  private invincibleMs = 0;
+  private readonly bodyShapes: Phaser.GameObjects.Shape[] = [];
+  private readonly bodyShapeColors: number[] = [];
+
   constructor(
     scene: Phaser.Scene,
     character: CharacterDefinition,
@@ -94,6 +101,10 @@ export class Player {
     const eyeR   = scene.add.circle(5, -20, 2, 0xffffff);
     const sword  = scene.add.triangle(22, 5, 0, -15, 0, 15, 10, 0, 0xcccccc);
     this.visual.add([body, helmet, eyeL, eyeR, sword]);
+
+    this.bodyShapes.push(body, helmet, eyeL, eyeR);
+    this.bodyShapeColors.push(character.primaryColor, character.accentColor, 0xffffff, 0xffffff);
+
     return sword;
   }
 
@@ -269,6 +280,17 @@ export class Player {
     // Always sync visual (even during lunge when inputEnabled=false)
     this.visual.setPosition(this.physicsImage.x, this.physicsImage.y);
 
+    // Tick invincibility blink
+    if (this.invincibleMs > 0) {
+      this.invincibleMs = Math.max(0, this.invincibleMs - dt);
+      if (this.invincibleMs > 0) {
+        this.visual.setAlpha(Math.floor(this.invincibleMs / 100) % 2 === 0 ? 0.3 : 1.0);
+      } else {
+        this.visual.setAlpha(1);
+        this.setBodyColors(null);
+      }
+    }
+
     if (!this.inputEnabled) return;
 
     const physBody = this.physicsImage.body as Phaser.Physics.Arcade.Body;
@@ -348,4 +370,55 @@ export class Player {
 
   getSwordCooldown(): number { return this.swordCooldownMs; }
   getBashCooldown():  number { return this.bashCooldownMs; }
+
+  // ── Damage & respawn ────────────────────────────────────────────────────────
+
+  isDead(): boolean       { return this.dead; }
+  isInvincible(): boolean { return this.invincibleMs > 0; }
+
+  takeDamage(amount: number): void {
+    if (this.invincibleMs > 0 || this.dead) return;
+    this.hp           = Math.max(0, this.hp - amount);
+    this.invincibleMs = 500;
+    this.setBodyColors(0xff2222);
+    this.scene.time.delayedCall(120, () => {
+      if (!this.dead) this.setBodyColors(null);
+    });
+    if (this.hp <= 0) this.handlePlayerDeath();
+  }
+
+  private handlePlayerDeath(): void {
+    this.dead         = true;
+    this.inputEnabled = false;
+    (this.physicsImage.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
+    this.scene.tweens.add({
+      targets: this.visual,
+      alpha: 0,
+      duration: 400,
+      ease: 'Linear',
+      onComplete: () => {
+        this.scene.time.delayedCall(400, () => { this.onDeath?.(); });
+      },
+    });
+  }
+
+  respawn(x: number, y: number): void {
+    this.hp           = this.maxHp;
+    this.mp           = this.maxMp;
+    this.dead         = false;
+    this.invincibleMs = 0;
+    this.swordCooldownMs = 0;
+    this.bashCooldownMs  = 0;
+    this.swinging     = false;
+    this.setPosition(x, y);
+    this.visual.setAlpha(1);
+    this.setBodyColors(null);
+    this.inputEnabled = true;
+  }
+
+  private setBodyColors(color: number | null): void {
+    for (let i = 0; i < this.bodyShapes.length; i++) {
+      this.bodyShapes[i].setFillStyle(color !== null ? color : this.bodyShapeColors[i]);
+    }
+  }
 }
