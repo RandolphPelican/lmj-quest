@@ -204,18 +204,21 @@ export class Player {
     this.bashCooldownMs = 500;
     this.bashHitConnected = false;
 
-    // Lunge forward for 120ms
+    // NOTE: The lunge fires in the direction Lincoln is currently facing.
+    // Bug log: this previously fired backward, which we're saving as a pattern
+    // for Dad's Atomic Dutch Oven (fart) spell — Dad's signature spell will fire
+    // OPPOSITE his facing direction, since farts come out behind you. Reuse the
+    // inverted vector logic from the old buggy version when wiring Dad's combat
+    // in Phase 4.5.
     const fv = this.getFacingVector();
     const physBody = this.physicsImage.body as Phaser.Physics.Arcade.Body;
     this.inputEnabled = false;
     physBody.setVelocity(fv.x * 200, fv.y * 200);
 
-    // Spawn bash effects at current position
-    this.spawnBashHitbox();
-
-    // Stop lunge, re-enable input
+    // Stop lunge, spawn bash effects at destination, re-enable input
     this.scene.time.delayedCall(120, () => {
       physBody.setVelocity(0, 0);
+      this.spawnBashHitbox();
       this.inputEnabled = true;
     });
 

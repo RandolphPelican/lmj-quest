@@ -1,16 +1,18 @@
 import Phaser from 'phaser';
-import { TILE_SIZE } from '../../shared/tiles';
 import { Enemy, AIState } from './Enemy';
 import type { Player } from '../Player';
 import type { Room } from '../Room';
 
-const ATTACK_RANGE  = 120; // px — triggers lunge
-const LUNGE_SPEED   = 180;
+const ATTACK_RANGE   = 120; // px — triggers lunge
+const LUNGE_SPEED    = 180;
 const LUNGE_DURATION = 800; // ms
+const WAYPOINT_SNAP  = 6;   // px — close enough to advance waypoint
 
 export class StackOverflow extends Enemy {
-  private readonly homePos!: { x: number; y: number };
-  private readonly patrolCorners!: { x: number; y: number }[];
+  // Patrol: 4 corners forming a right-ward rectangle from home position.
+  // [0]=home, [1]=home+96x, [2]=home+96x+64y, [3]=home+64y
+  private readonly homePos: { x: number; y: number };
+  private readonly patrolCorners: { x: number; y: number }[];
   private patrolIndex = 0;
   private attackTimer = 0;
 
@@ -24,10 +26,10 @@ export class StackOverflow extends Enemy {
     });
     this.homePos = { x, y };
     this.patrolCorners = [
-      { x: x - TILE_SIZE * 2, y: y - TILE_SIZE },
-      { x: x + TILE_SIZE * 2, y: y - TILE_SIZE },
-      { x: x + TILE_SIZE * 2, y: y + TILE_SIZE },
-      { x: x - TILE_SIZE * 2, y: y + TILE_SIZE },
+      { x: x,       y: y      },
+      { x: x + 96,  y: y      },
+      { x: x + 96,  y: y + 64 },
+      { x: x,       y: y + 64 },
     ];
     this.state = AIState.Patrolling;
     this.buildVisual(this.visual);
@@ -54,8 +56,8 @@ export class StackOverflow extends Enemy {
     const body         = this.carrier.body as Phaser.Physics.Arcade.Body;
 
     if (this.state === AIState.Patrolling) {
+      // Trigger lunge if player is close
       if (distToPlayer < ATTACK_RANGE) {
-        // Begin lunge
         this.state       = AIState.Attacking;
         this.attackTimer = LUNGE_DURATION;
         const len = distToPlayer || 1;
@@ -63,12 +65,12 @@ export class StackOverflow extends Enemy {
         return;
       }
 
-      // Move to next patrol corner
+      // Advance waypoint when close enough, then move toward current target
       const target = this.patrolCorners[this.patrolIndex];
       const tdx    = target.x - this.carrier.x;
       const tdy    = target.y - this.carrier.y;
       const tdist  = Math.sqrt(tdx * tdx + tdy * tdy);
-      if (tdist < 8) {
+      if (tdist < WAYPOINT_SNAP) {
         this.patrolIndex = (this.patrolIndex + 1) % this.patrolCorners.length;
       } else {
         const tlen = tdist || 1;
@@ -81,14 +83,15 @@ export class StackOverflow extends Enemy {
         this.state = AIState.Returning;
         body.setVelocity(0, 0);
       }
-      // Lunge velocity stays; wall collider stops it naturally
+      // Lunge velocity is maintained by physics; wall collider stops it naturally
 
     } else if (this.state === AIState.Returning) {
       const tdx   = this.homePos.x - this.carrier.x;
       const tdy   = this.homePos.y - this.carrier.y;
       const tdist = Math.sqrt(tdx * tdx + tdy * tdy);
       if (tdist < 8) {
-        this.state = AIState.Patrolling;
+        this.state       = AIState.Patrolling;
+        this.patrolIndex = 0;
         body.setVelocity(0, 0);
       } else {
         const tlen = tdist || 1;

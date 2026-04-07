@@ -55,7 +55,7 @@ export class CharacterSelectScene extends Phaser.Scene {
 
     // Instructions
     this.add
-      .text(width / 2, height - 70, 'CLICK A HERO OR PRESS 1-5   •   ENTER TO CONFIRM', {
+      .text(width / 2, height - 75, 'CLICK A HERO OR PRESS 1-5   •   ENTER TO CONFIRM', {
         fontFamily: 'monospace',
         fontSize: '14px',
         color: '#888888',
@@ -64,14 +64,14 @@ export class CharacterSelectScene extends Phaser.Scene {
 
     // Confirm button
     const confirmBtn = this.add
-      .rectangle(width / 2, height - 35, 200, 36, 0x2a9d3f)
+      .rectangle(width / 2, height - 40, 240, 40, 0x2a9d3f)
       .setInteractive({ useHandCursor: true });
     confirmBtn.setStrokeStyle(2, 0xffffff);
 
     this.add
-      .text(width / 2, height - 35, 'START QUEST', {
+      .text(width / 2, height - 40, 'START QUEST', {
         fontFamily: 'monospace',
-        fontSize: '16px',
+        fontSize: '18px',
         fontStyle: 'bold',
         color: '#ffffff',
       })

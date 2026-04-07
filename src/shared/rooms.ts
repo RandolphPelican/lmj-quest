@@ -19,95 +19,110 @@ export interface RoomData {
   signs?: Record<string, string>;
 }
 
-// Room 01 — The First Chamber
-// Empty room. North door leads to Room 02, south door leads to Room 03.
-// East/west doors loop back to the same room for quick movement testing.
+// Room 1: The First Chamber
+// 30x17, doors on all 4 sides at the midpoints, mostly open with two pillar clusters
+// Door positions: north col 15 row 0, south col 15 row 16, west col 0 row 8, east col 29 row 8
 export const ROOM_01: RoomData = {
   id: 'room_01',
   name: 'The First Chamber',
   layout: [
-    '#######D#######',
-    '#.............#',
-    '#.............#',
-    '#.............#',
-    '#.............#',
-    'D.............D',
-    '#.............#',
-    '#.............#',
-    '#.............#',
-    '#.............#',
-    '#######D#######',
+    '###############D##############',
+    '#............................#',
+    '#............................#',
+    '#......PP............PP......#',
+    '#......PP............PP......#',
+    '#............................#',
+    '#............................#',
+    '#............................#',
+    'D............................D',
+    '#............................#',
+    '#............................#',
+    '#............................#',
+    '#......PP............PP......#',
+    '#......PP............PP......#',
+    '#............................#',
+    '#............................#',
+    '###############D##############',
   ],
   doors: {
-    '7,0':  { roomId: 'room_02', spawnTile: { x: 7, y: 9 } },
-    '7,10': { roomId: 'room_03', spawnTile: { x: 7, y: 1 } },
-    '0,5':  { roomId: 'room_01', spawnTile: { x: 13, y: 5 } },
-    '14,5': { roomId: 'room_01', spawnTile: { x: 1,  y: 5 } },
+    '15,0':  { roomId: 'room_02', spawnTile: { x: 15, y: 15 } },
+    '15,16': { roomId: 'room_03', spawnTile: { x: 15, y: 1 } },
+    '0,8':   { roomId: 'room_01', spawnTile: { x: 28, y: 8 } },
+    '29,8':  { roomId: 'room_01', spawnTile: { x: 1, y: 8 } },
   },
 };
 
-// Room 02 — The Crooked Walk
-// Three interior pillars force weaving. A 2×2 tar patch sits on the main path.
-// Entering from the south (spawning near row 9), the player must navigate
-// around the pillars and cross the tar to reach the north exit.
-// Both doors return to Room 01 so the player can practice the loop.
+// Room 2: The Crooked Walk
+// 30x17, snake-pillar maze with a tar patch in the middle
+// T = tar tile, P = pillar
+// Doors only on north (back to Room 1) and south (to Room 1)
 export const ROOM_02: RoomData = {
   id: 'room_02',
   name: 'The Crooked Walk',
   layout: [
-    '#######D#######',  // row 0  — north door (7,0)
-    '#.............#',  // row 1
-    '#.P...........#',  // row 2  — pillar at (2,2)
-    '#.............#',  // row 3
-    '#.......TT....#',  // row 4  — tar at (8,4)(9,4)
-    '#.......TT....#',  // row 5  — tar at (8,5)(9,5)
-    '#.........P...#',  // row 6  — pillar at (10,6)
-    '#.............#',  // row 7
-    '#.....P.......#',  // row 8  — pillar at (6,8)
-    '#.............#',  // row 9
-    '#######D#######',  // row 10 — south door (7,10)
+    '###############D##############',
+    '#............................#',
+    '#..PPPPPPPP..................#',
+    '#............................#',
+    '#............................#',
+    '#..............PPPPPPPP......#',
+    '#............................#',
+    '#............TTTT............#',
+    '#............TTTT............#',
+    '#............TTTT............#',
+    '#............TTTT............#',
+    '#......PPPPPPPP..............#',
+    '#............................#',
+    '#............................#',
+    '#..................PPPPPPPP..#',
+    '#............................#',
+    '###############D##############',
   ],
   doors: {
-    '7,0':  { roomId: 'room_01', spawnTile: { x: 7, y: 9 } },
-    '7,10': { roomId: 'room_01', spawnTile: { x: 7, y: 1 } },
+    '15,0':  { roomId: 'room_01', spawnTile: { x: 15, y: 15 } },
+    '15,16': { roomId: 'room_01', spawnTile: { x: 15, y: 1 } },
   },
 };
 
-// Room 03 — The Puzzle Hall
-// A pressure plate (B) at (6,6) is protected by a C-shaped spike cluster.
-// The smart path: go around the spikes from the south (rows 7+) and approach
-// the plate from the open south side of the C.  Stepping the plate unlocks
-// the locked door (L) at (7,10) and converts it to an open door (O).
-// A sign near the entrance gives the player a hint.
+// Room 3: The Puzzle Hall
+// 30x17, locked door blocks south exit, pressure plate in center surrounded by spikes (S)
+// Player enters from north, must navigate to plate, plate opens locked door (L -> O)
+// Sign tile (G) near the entrance with hint
 export const ROOM_03: RoomData = {
   id: 'room_03',
   name: 'The Puzzle Hall',
   layout: [
-    '#######D#######',  // row 0  — north door (7,0)
-    '#....G........#',  // row 1  — sign at (5,1)
-    '#.............#',  // row 2
-    '#.............#',  // row 3
-    '#...SSSSS.....#',  // row 4  — spike top bar:  (4,4)(5,4)(6,4)(7,4)(8,4)
-    '#...S...S.....#',  // row 5  — spike sides:    (4,5)(8,5)
-    '#...S.B.S.....#',  // row 6  — spike sides + plate: (4,6)(8,6), plate at (6,6)
-    '#.............#',  // row 7  — open; approach plate from here
-    '#.............#',  // row 8
-    '#.............#',  // row 9
-    '#######L#######',  // row 10 — locked door (7,10) — opens when plate is stepped
+    '###############D##############',
+    '#............................#',
+    '#.............G..............#',
+    '#............................#',
+    '#............................#',
+    '#............................#',
+    '#............SSSSS...........#',
+    '#............S...S...........#',
+    '#............S.B.S...........#',
+    '#............S...S...........#',
+    '#............SSSSS...........#',
+    '#............................#',
+    '#............................#',
+    '#............................#',
+    '#............................#',
+    '#............................#',
+    '###############L##############',
   ],
   doors: {
-    '7,0':  { roomId: 'room_01', spawnTile: { x: 7, y: 9 } },
-    '7,10': { roomId: 'room_01', spawnTile: { x: 7, y: 1 } },
+    '15,0':  { roomId: 'room_01', spawnTile: { x: 15, y: 1 } },
+    '15,16': { roomId: 'room_01', spawnTile: { x: 15, y: 15 } },
   },
   pressurePlates: [
     {
-      tileX: 6,
-      tileY: 6,
-      opensLockedDoorAt: { x: 7, y: 10 },
+      tileX: 15,
+      tileY: 8,
+      opensLockedDoorAt: { x: 15, y: 16 },
     },
   ],
   signs: {
-    '5,1': 'The path opens to those who step lightly.',
+    '14,2': 'The way opens to those who step lightly. Watch the spikes.',
   },
 };
 
@@ -116,3 +131,20 @@ export const ALL_ROOMS: Record<string, RoomData> = {
   room_02: ROOM_02,
   room_03: ROOM_03,
 };
+
+export function validateRooms(): void {
+  for (const [id, room] of Object.entries(ALL_ROOMS)) {
+    if (room.layout.length !== 17) {
+      throw new Error(
+        `Room "${id}" has ${room.layout.length} rows, expected 17. Layout is malformed.`,
+      );
+    }
+    for (let row = 0; row < room.layout.length; row++) {
+      if (room.layout[row].length !== 30) {
+        throw new Error(
+          `Room "${id}" row ${row} has ${room.layout[row].length} chars, expected 30. Row content: "${room.layout[row]}"`,
+        );
+      }
+    }
+  }
+}

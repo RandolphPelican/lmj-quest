@@ -3,13 +3,14 @@ import type { Player } from './Player';
 import type { Room } from './Room';
 import type { Enemy } from './entities/Enemy';
 
-const DEPTH = 20;
+const DEPTH      = 20;
 const LINE_COUNT = 8;
 
 export class DebugOverlay {
   private readonly scene: Phaser.Scene;
   private readonly graphics: Phaser.GameObjects.Graphics;
   private readonly lines: Phaser.GameObjects.Text[];
+  private readonly debugBtn: Phaser.GameObjects.Rectangle;
   private visible = false;
 
   constructor(scene: Phaser.Scene) {
@@ -19,8 +20,9 @@ export class DebugOverlay {
     this.graphics.setDepth(DEPTH);
     this.graphics.setVisible(false);
 
-    const x = 796;
-    const baseY = 458;
+    // Debug text lines — right-aligned, near bottom of playfield
+    const x     = 956;
+    const baseY = 484;
     const lineH = 14;
     this.lines = Array.from({ length: LINE_COUNT }, (_, i) =>
       scene.add.text(x, baseY + i * lineH, '', {
@@ -31,6 +33,22 @@ export class DebugOverlay {
         padding: { x: 3, y: 1 },
       }).setOrigin(1, 0).setDepth(DEPTH).setVisible(false),
     );
+
+    // Always-visible DEBUG toggle button (bottom-right of canvas)
+    const btnX = 900;
+    const btnY = 614;
+    this.debugBtn = scene.add.rectangle(btnX, btnY, 80, 24, 0x333333)
+      .setStrokeStyle(1, 0xffffff)
+      .setDepth(DEPTH)
+      .setInteractive({ useHandCursor: true });
+
+    scene.add.text(btnX, btnY, 'DEBUG', {
+      fontFamily: 'monospace',
+      fontSize: '11px',
+      color: '#ffffff',
+    }).setOrigin(0.5, 0.5).setDepth(DEPTH);
+
+    this.debugBtn.on('pointerdown', () => this.toggle());
   }
 
   toggle(): void {
@@ -38,26 +56,27 @@ export class DebugOverlay {
     this.graphics.setVisible(this.visible);
     for (const line of this.lines) line.setVisible(this.visible);
     if (!this.visible) this.graphics.clear();
+    this.debugBtn.setFillStyle(this.visible ? 0x2a6a2a : 0x333333);
   }
 
   update(player: Player, room: Room, roomEnemies: Enemy[]): void {
     if (!this.visible) return;
 
-    const fps = Math.round(this.scene.game.loop.actualFps);
-    const px = Math.round(player.getX());
-    const py = Math.round(player.getY());
-    const tx = player.getTileX();
-    const ty = player.getTileY();
+    const fps     = Math.round(this.scene.game.loop.actualFps);
+    const px      = Math.round(player.getX());
+    const py      = Math.round(player.getY());
+    const tx      = player.getTileX();
+    const ty      = player.getTileY();
     const tiledef = room.getTileAt(tx, ty);
-    const swd = Math.max(0, Math.round(player.getSwordCooldown()));
-    const bsh = Math.max(0, Math.round(player.getBashCooldown()));
+    const swd     = Math.max(0, Math.round(player.getSwordCooldown()));
+    const bsh     = Math.max(0, Math.round(player.getBashCooldown()));
 
     const aliveCount = roomEnemies.filter(e => !e.isDead()).length;
     const data = [
       `FPS: ${fps}`,
       `POS: ${px}, ${py}`,
       `TILE: ${tx}, ${ty}`,
-      `ROOM: ${room.roomData.id}`,
+      `Room: ${room.roomData.id} \u2014 ${room.roomData.name}`,
       `[${tiledef.char}] flags:${tiledef.flags}`,
       `MP: ${player.getMP()}/${player.getMaxMP()}`,
       `SWD:${swd}ms  BSH:${bsh}ms`,

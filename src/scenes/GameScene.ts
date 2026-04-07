@@ -2,7 +2,8 @@ import Phaser from 'phaser';
 import {
   TILE_SIZE,
   ROOM_HEIGHT_TILES,
-  ROOM_PIXEL_WIDTH,
+  PLAYFIELD_X,
+  PLAYFIELD_Y,
   TileFlag,
 } from '../shared/tiles';
 import { ALL_ROOMS } from '../shared/rooms';
@@ -18,10 +19,8 @@ import { InfiniteLoop } from '../game/entities/InfiniteLoop';
 import { EnemyProjectile } from '../game/entities/EnemyProjectile';
 import type { CharacterDefinition } from '../shared/characters';
 
-const HUD_HEIGHT  = 80;
-const CANVAS_W    = 800;
-const PLAYFIELD_X = (CANVAS_W - ROOM_PIXEL_WIDTH) / 2;  // 160
-const PLAYFIELD_Y = HUD_HEIGHT;                          // 80
+const CANVAS_W = 960;
+const CANVAS_H = 640;
 
 type SlideDir = 'north' | 'south' | 'east' | 'west';
 
@@ -49,11 +48,15 @@ export class GameScene extends Phaser.Scene {
   private pKey!: Phaser.Input.Keyboard.Key;
 
   private transitioning = false;
+  private transitionInProgress = false;
   private readonly triggeredPlates = new Set<string>();
 
   private readonly enemyMap = new Map<string, Enemy[]>();
   private activeProjectiles: EnemyProjectile[] = [];
   private aiDebugOn = false;
+
+  // Configurable level spawn — override per level in future phases
+  private readonly LEVEL_SPAWN = { roomId: 'room_01', tileX: 15, tileY: 8 };
 
   constructor() {
     super({ key: 'GameScene' });
@@ -62,7 +65,8 @@ export class GameScene extends Phaser.Scene {
   init(data: { character: CharacterDefinition }): void {
     this.selectedCharacter = data.character;
     this.triggeredPlates.clear();
-    this.transitioning = false;
+    this.transitioning        = false;
+    this.transitionInProgress = false;
     this.aiDebugOn = false;
     this.enemyMap.clear();
     this.activeProjectiles = [];
@@ -110,7 +114,10 @@ export class GameScene extends Phaser.Scene {
       );
     });
 
-    this.loadRoom(ALL_ROOMS['room_01'], { x: 7, y: 5 });
+    this.loadRoom(
+      ALL_ROOMS[this.LEVEL_SPAWN.roomId],
+      { x: this.LEVEL_SPAWN.tileX, y: this.LEVEL_SPAWN.tileY },
+    );
   }
 
   update(time: number, delta: number): void {
@@ -273,22 +280,22 @@ export class GameScene extends Phaser.Scene {
     if (roomId === 'room_01') {
       return [new NullPointer(
         this,
-        PLAYFIELD_X + 10 * TILE_SIZE + TILE_SIZE / 2,
-        PLAYFIELD_Y +  5 * TILE_SIZE + TILE_SIZE / 2,
+        PLAYFIELD_X + 24 * TILE_SIZE + TILE_SIZE / 2,
+        PLAYFIELD_Y +  8 * TILE_SIZE + TILE_SIZE / 2,
       )];
     }
     if (roomId === 'room_02') {
       return [new StackOverflow(
         this,
-        PLAYFIELD_X + 7 * TILE_SIZE + TILE_SIZE / 2,
-        PLAYFIELD_Y + 3 * TILE_SIZE + TILE_SIZE / 2,
+        PLAYFIELD_X +  4 * TILE_SIZE + TILE_SIZE / 2,
+        PLAYFIELD_Y + 13 * TILE_SIZE + TILE_SIZE / 2,
       )];
     }
     if (roomId === 'room_03') {
       return [new InfiniteLoop(
         this,
-        PLAYFIELD_X + 11 * TILE_SIZE + TILE_SIZE / 2,
-        PLAYFIELD_Y +  8 * TILE_SIZE + TILE_SIZE / 2,
+        PLAYFIELD_X + 24 * TILE_SIZE + TILE_SIZE / 2,
+        PLAYFIELD_Y + 12 * TILE_SIZE + TILE_SIZE / 2,
       )];
     }
     return [];
@@ -317,11 +324,12 @@ export class GameScene extends Phaser.Scene {
     this.destroyActiveProjectiles();
     this.resetAllEnemies();
 
-    const oldRoom    = this.currentRoom;
-    this.currentRoom = new Room(this, ALL_ROOMS['room_01'], PLAYFIELD_X, PLAYFIELD_Y);
+    const spawnRoomData = ALL_ROOMS[this.LEVEL_SPAWN.roomId];
+    const oldRoom       = this.currentRoom;
+    this.currentRoom    = new Room(this, spawnRoomData, PLAYFIELD_X, PLAYFIELD_Y);
 
-    const spawnX = PLAYFIELD_X + 7 * TILE_SIZE + TILE_SIZE / 2;
-    const spawnY = PLAYFIELD_Y + 5 * TILE_SIZE + TILE_SIZE / 2;
+    const spawnX = PLAYFIELD_X + this.LEVEL_SPAWN.tileX * TILE_SIZE + TILE_SIZE / 2;
+    const spawnY = PLAYFIELD_Y + this.LEVEL_SPAWN.tileY * TILE_SIZE + TILE_SIZE / 2;
     this.player.respawn(spawnX, spawnY);
 
     this.currentCollider = this.physics.add.collider(
@@ -329,18 +337,19 @@ export class GameScene extends Phaser.Scene {
       this.currentRoom.getPhysicsGroup(),
     );
 
-    this.hud.setRoomName(ALL_ROOMS['room_01'].name);
+    this.hud.setRoomName(spawnRoomData.name);
     this.triggeredPlates.clear();
     oldRoom.destroy();
 
-    const enemies = this.getOrCreateRoomEnemies('room_01');
+    const enemies = this.getOrCreateRoomEnemies(this.LEVEL_SPAWN.roomId);
     for (const enemy of enemies) {
       if (!enemy.isDead()) {
         enemy.wireWallCollider(this.currentRoom.getPhysicsGroup());
       }
     }
 
-    this.transitioning = false;
+    this.transitioning        = false;
+    this.transitionInProgress = false;
   }
 
   // ── Room transitions ──────────────────────────────────────────────────────────
@@ -353,10 +362,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   private startTransition(dest: DoorTarget, dir: SlideDir): void {
+    if (this.transitionInProgress) return;   // race condition guard
+
     const destRoomData = ALL_ROOMS[dest.roomId];
     if (!destRoomData) return;
 
-    this.transitioning = true;
+    this.transitionInProgress = true;
+    this.transitioning        = true;
     this.player.disableInput();
     this.currentCollider.destroy();
 
@@ -371,7 +383,7 @@ export class GameScene extends Phaser.Scene {
     const newContainer = newRoom.getContainer();
 
     const dx = dir === 'east' ? -CANVAS_W : dir === 'west' ?  CANVAS_W : 0;
-    const dy = dir === 'north' ?  600      : dir === 'south' ? -600     : 0;
+    const dy = dir === 'north' ?  CANVAS_H : dir === 'south' ? -CANVAS_H : 0;
 
     newContainer.setPosition(PLAYFIELD_X - dx, PLAYFIELD_Y - dy);
 
@@ -419,7 +431,8 @@ export class GameScene extends Phaser.Scene {
         }
 
         this.player.enableInput();
-        this.transitioning = false;
+        this.transitioning        = false;
+        this.transitionInProgress = false;
       },
     });
   }

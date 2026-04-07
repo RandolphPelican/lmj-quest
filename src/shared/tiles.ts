@@ -17,10 +17,13 @@ export interface TileDefinition {
 }
 
 export const TILE_SIZE = 32;
-export const ROOM_WIDTH_TILES = 15;
-export const ROOM_HEIGHT_TILES = 11;
-export const ROOM_PIXEL_WIDTH = ROOM_WIDTH_TILES * TILE_SIZE;
-export const ROOM_PIXEL_HEIGHT = ROOM_HEIGHT_TILES * TILE_SIZE;
+export const ROOM_WIDTH_TILES  = 30;   // 30 × 32 = 960px — fills canvas horizontally
+export const ROOM_HEIGHT_TILES = 17;   // 17 × 32 = 544px — fits between 48px HUD strips
+export const ROOM_PIXEL_WIDTH  = ROOM_WIDTH_TILES  * TILE_SIZE;  // 960
+export const ROOM_PIXEL_HEIGHT = ROOM_HEIGHT_TILES * TILE_SIZE;  // 544
+
+export const PLAYFIELD_X = 0;   // edge-to-edge horizontally
+export const PLAYFIELD_Y = 48;  // 48px HUD strip above playfield
 
 export const TILES: Record<string, TileDefinition> = {
   '.': { char: '.', flags: TileFlag.None,                          color: 0x2a2a2a },
