@@ -25,7 +25,7 @@ export const CHARACTERS: CharacterDefinition[] = [
     description: 'Strong of sword and true of heart.',
     stats: { hp: 100, mp: 40, speed: 100, damage: 20 },
     attackName: 'Sword Slash',
-    spellName: 'Shield Bash',
+    spellName: 'Whirling Slash',
     primaryColor: 0x3366ff,
     accentColor: 0x1a3d99,
   },

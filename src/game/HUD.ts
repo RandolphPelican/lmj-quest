@@ -12,6 +12,8 @@ export class HUD {
   private readonly mpText: Phaser.GameObjects.Text;
   private readonly keyRects: Phaser.GameObjects.Rectangle[];
   private readonly roomNameText: Phaser.GameObjects.Text;
+  private readonly pauseBtn: Phaser.GameObjects.Rectangle;
+  private pauseCallback: (() => void) | null = null;
 
   private readonly keyActiveColors: number[] = [0xcd7f32, 0xc0c0c0, 0xffd700];
   private readonly keyMap: Record<'bronze' | 'silver' | 'gold', number> = {
@@ -97,6 +99,22 @@ export class HUD {
       fontFamily: 'monospace', fontSize: '16px', color: '#888888',
     }).setOrigin(0.5, 0.5).setDepth(DEPTH);
 
+    // ── PAUSE button (bottom bar, left of DEBUG) ───────────────────────────────
+    this.pauseBtn = scene.add.rectangle(805, 614, 80, 24, 0x333333)
+      .setStrokeStyle(1, 0xffffff)
+      .setDepth(DEPTH)
+      .setInteractive({ useHandCursor: true });
+
+    scene.add.text(805, 614, 'PAUSE', {
+      fontFamily: 'monospace',
+      fontSize: '11px',
+      color: '#ffffff',
+    }).setOrigin(0.5, 0.5).setDepth(DEPTH);
+
+    this.pauseBtn.on('pointerdown', () => {
+      if (this.pauseCallback) this.pauseCallback();
+    });
+
     // Seed initial values
     this.setHP(character.stats.hp, character.stats.hp);
     this.setMP(character.stats.mp, character.stats.mp);
@@ -121,5 +139,13 @@ export class HUD {
   setKey(color: 'bronze' | 'silver' | 'gold', owned: boolean): void {
     const idx = this.keyMap[color];
     this.keyRects[idx].setFillStyle(owned ? this.keyActiveColors[idx] : 0x222222);
+  }
+
+  setPauseCallback(cb: () => void): void {
+    this.pauseCallback = cb;
+  }
+
+  setPauseState(paused: boolean): void {
+    this.pauseBtn.setFillStyle(paused ? 0x8a7a2a : 0x333333);
   }
 }

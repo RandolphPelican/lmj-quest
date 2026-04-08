@@ -43,11 +43,10 @@ export class Player {
   // Active hitboxes
   private swordHitbox: Phaser.Physics.Arcade.Image | null = null;
   private bashHitbox: Phaser.Physics.Arcade.Image | null = null;
-  private bashCircleVisual: Phaser.GameObjects.Arc | null = null;
 
   // One-shot hit flags per attack instance
   private swordHitConnected = false;
-  private bashHitConnected = false;
+  private readonly slashHitObjects = new Set<object>();
 
   // Prevents mid-swing position override
   private swinging = false;
@@ -197,67 +196,65 @@ export class Player {
     }
   }
 
-  tryShieldBash(): void {
+  tryWhirlingSlash(): void {
     if (this.bashCooldownMs > 0 || this.mp < 15) return;
 
+    // DESIGN BACKLOG NOTE: The old Shield Bash spell that lived here previously
+    // had a bug where it lunged Lincoln backward instead of forward. We're saving
+    // that inverted-vector pattern for Dad's Atomic Dutch Oven (fart) spell in
+    // Phase 4.4 — Dad's signature spell will fire OPPOSITE his facing direction
+    // since farts come out behind you. When wiring Dad's combat, reuse the
+    // inverted facing-direction logic from git history if needed.
+
     this.mp -= 15;
-    this.bashCooldownMs = 500;
-    this.bashHitConnected = false;
+    this.bashCooldownMs = 600;
+    this.slashHitObjects.clear();
+    this.swinging = true; // prevent updateSwordPosition from interrupting the spin
 
-    // NOTE: The lunge fires in the direction Lincoln is currently facing.
-    // Bug log: this previously fired backward, which we're saving as a pattern
-    // for Dad's Atomic Dutch Oven (fart) spell — Dad's signature spell will fire
-    // OPPOSITE his facing direction, since farts come out behind you. Reuse the
-    // inverted vector logic from the old buggy version when wiring Dad's combat
-    // in Phase 4.5.
-    const fv = this.getFacingVector();
-    const physBody = this.physicsImage.body as Phaser.Physics.Arcade.Body;
-    this.inputEnabled = false;
-    physBody.setVelocity(fv.x * 200, fv.y * 200);
-
-    // Stop lunge, spawn bash effects at destination, re-enable input
-    this.scene.time.delayedCall(120, () => {
-      physBody.setVelocity(0, 0);
-      this.spawnBashHitbox();
-      this.inputEnabled = true;
-    });
-
-    // Expire bash hitbox
-    this.scene.time.delayedCall(300, () => {
-      this.destroyBashHitbox();
-    });
-  }
-
-  private spawnBashHitbox(): void {
     const x = this.physicsImage.x;
     const y = this.physicsImage.y;
 
+    // Spawn 360° hitbox centered on Lincoln (radius 60px → 120×120 AABB)
+    this.spawnBashHitbox(x, y);
+
+    // Faint ring visual marking the hit radius
+    const ring = this.scene.add.circle(x, y, 60, 0xffffff, 0);
+    ring.setStrokeStyle(2, 0xffffff, 0.4);
+    ring.setDepth(3);
+    this.scene.tweens.add({
+      targets: ring,
+      alpha: 0,
+      duration: 250,
+      ease: 'Linear',
+      onComplete: () => ring.destroy(),
+    });
+
+    // Sword spins 360° over 250ms
+    const startRot = this.sword.rotation;
+    this.scene.tweens.add({
+      targets: this.sword,
+      rotation: startRot + Math.PI * 2,
+      duration: 250,
+      ease: 'Linear',
+      onComplete: () => {
+        this.swinging = false;
+        this.updateSwordPosition();
+      },
+    });
+
+    // Expire hitbox after 250ms
+    this.scene.time.delayedCall(250, () => {
+      this.destroyBashHitbox();
+      this.slashHitObjects.clear();
+    });
+  }
+
+  private spawnBashHitbox(x: number, y: number): void {
     this.bashHitbox = this.scene.physics.add.staticImage(x, y, '__DEFAULT');
     this.bashHitbox.setVisible(false);
     this.bashHitbox.setDepth(0);
-    (this.bashHitbox.body as Phaser.Physics.Arcade.StaticBody).setSize(100, 100);
+    (this.bashHitbox.body as Phaser.Physics.Arcade.StaticBody).setSize(120, 120);
     this.bashHitbox.refreshBody();
-
-    // Expanding visual circle
-    this.bashCircleVisual = this.scene.add.circle(x, y, 25, 0x4488ff);
-    this.bashCircleVisual.setAlpha(0.8);
-    this.bashCircleVisual.setScale(0.1);
-    this.bashCircleVisual.setDepth(3);
-
-    this.scene.tweens.add({
-      targets: this.bashCircleVisual,
-      scaleX: 2.0,
-      scaleY: 2.0,
-      alpha: 0,
-      duration: 300,
-      ease: 'Quad.easeOut',
-      onComplete: () => {
-        if (this.bashCircleVisual) {
-          this.bashCircleVisual.destroy();
-          this.bashCircleVisual = null;
-        }
-      },
-    });
   }
 
   private destroyBashHitbox(): void {
@@ -265,7 +262,6 @@ export class Player {
       this.bashHitbox.destroy();
       this.bashHitbox = null;
     }
-    // bashCircleVisual is destroyed by its own tween onComplete
   }
 
   // ── Movement update ─────────────────────────────────────────────────────────
@@ -368,8 +364,8 @@ export class Player {
 
   isSwordHitConnected(): boolean { return this.swordHitConnected; }
   markSwordHitConnected(): void  { this.swordHitConnected = true; }
-  isBashHitConnected(): boolean  { return this.bashHitConnected; }
-  markBashHitConnected(): void   { this.bashHitConnected = true; }
+  wasSlashHit(obj: object): boolean  { return this.slashHitObjects.has(obj); }
+  markSlashHit(obj: object): void    { this.slashHitObjects.add(obj); }
 
   getSwordCooldown(): number { return this.swordCooldownMs; }
   getBashCooldown():  number { return this.bashCooldownMs; }
@@ -413,6 +409,7 @@ export class Player {
     this.swordCooldownMs = 0;
     this.bashCooldownMs  = 0;
     this.swinging     = false;
+    this.slashHitObjects.clear();
     this.setPosition(x, y);
     this.visual.setAlpha(1);
     this.setBodyColors(null);

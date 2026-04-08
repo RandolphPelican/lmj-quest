@@ -17,6 +17,7 @@ import { NullPointer } from '../game/entities/NullPointer';
 import { StackOverflow } from '../game/entities/StackOverflow';
 import { InfiniteLoop } from '../game/entities/InfiniteLoop';
 import { EnemyProjectile } from '../game/entities/EnemyProjectile';
+import { PauseManager } from '../game/PauseManager';
 import type { CharacterDefinition } from '../shared/characters';
 
 const CANVAS_W = 960;
@@ -36,6 +37,7 @@ export class GameScene extends Phaser.Scene {
   private player!: Player;
   private hud!: HUD;
   private debugOverlay!: DebugOverlay;
+  private pauseManager!: PauseManager;
 
   private currentRoom!: Room;
   private currentCollider!: Phaser.Physics.Arcade.Collider;
@@ -94,7 +96,10 @@ export class GameScene extends Phaser.Scene {
     this.jKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.J);
     this.pKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.P);
 
+    this.pauseManager = new PauseManager(this);
     this.hud          = new HUD(this, this.selectedCharacter);
+    this.hud.setPauseCallback(() => this.pauseManager.toggle());
+    this.pauseManager.setOnPauseStateChange((paused) => this.hud.setPauseState(paused));
     this.debugOverlay = new DebugOverlay(this);
 
     // Wire enemy respawn: re-attach wall collider if enemy is in the current room
@@ -109,9 +114,9 @@ export class GameScene extends Phaser.Scene {
 
     // Wire projectile spawning (fired by InfiniteLoop)
     this.events.on('enemy:spawnProjectile', (data: SpawnProjectileData) => {
-      this.activeProjectiles.push(
-        new EnemyProjectile(this, data.x, data.y, data.dirX, data.dirY, data.damage),
-      );
+      const proj = new EnemyProjectile(this, data.x, data.y, data.dirX, data.dirY, data.damage);
+      proj.setupWallCollision(this.currentRoom.getPhysicsGroup());
+      this.activeProjectiles.push(proj);
     });
 
     this.loadRoom(
@@ -121,6 +126,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(time: number, delta: number): void {
+    this.pauseManager.checkInput();
+    if (this.pauseManager.isPaused()) return;
     if (this.transitioning) return;
 
     const px    = this.player.getX();
@@ -132,7 +139,7 @@ export class GameScene extends Phaser.Scene {
 
     // ── Combat input ──────────────────────────────────────────────────────────
     if (Phaser.Input.Keyboard.JustDown(this.jKey)) this.player.trySwingSword();
-    if (Phaser.Input.Keyboard.JustDown(this.pKey)) this.player.tryShieldBash();
+    if (Phaser.Input.Keyboard.JustDown(this.pKey)) this.player.tryWhirlingSlash();
 
     const currentEnemies = this.enemyMap.get(this.currentRoom.roomData.id) ?? [];
 
@@ -156,17 +163,17 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // ── Bash hit detection ────────────────────────────────────────────────────
-    const bashHitbox = this.player.getBashHitbox();
-    if (bashHitbox && !this.player.isBashHitConnected()) {
+    // ── Whirling Slash hit detection ──────────────────────────────────────────
+    const slashHitbox = this.player.getBashHitbox();
+    if (slashHitbox) {
       for (const enemy of currentEnemies) {
-        if (!enemy.isDead() && this.aabbOverlap(bashHitbox, enemy.getPhysicsCarrier())) {
-          this.player.markBashHitConnected();
+        if (!enemy.isDead() && !this.player.wasSlashHit(enemy) &&
+            this.aabbOverlap(slashHitbox, enemy.getPhysicsCarrier())) {
+          this.player.markSlashHit(enemy);
           const dx  = enemy.getX() - this.player.getX();
           const dy  = enemy.getY() - this.player.getY();
           const len = Math.sqrt(dx * dx + dy * dy) || 1;
-          enemy.takeDamage(15, { x: dx / len, y: dy / len });
-          break;
+          enemy.takeDamage(21, { x: dx / len, y: dy / len });
         }
       }
     }

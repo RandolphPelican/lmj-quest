@@ -87,6 +87,14 @@ export class Room {
     }
 
     this.physicsGroup.refresh();
+
+    // DIAGNOSTIC — remove once margin is confirmed fixed
+    console.log(
+      `[Room "${this.roomData.id}"] container=(${this.container.x}, ${this.container.y}) ` +
+      `scale=(${this.container.scaleX}, ${this.container.scaleY}) ` +
+      `tile[0,0] world-center-X=${this.playfieldX + TILE_SIZE / 2} ` +
+      `tile[29,0] world-center-X=${this.playfieldX + 29 * TILE_SIZE + TILE_SIZE / 2}`,
+    );
   }
 
   getTileAt(tileX: number, tileY: number): TileDefinition {
