@@ -24,7 +24,8 @@ import { SignPopup } from '../game/SignPopup';
 import { KeyItem } from '../game/entities/KeyItem';
 import { Chest } from '../game/entities/Chest';
 import { LootItem } from '../game/entities/LootItem';
-import { rollEnemyDrop, rollLoot, BRONZE_POOL, SILVER_POOL, GOLD_POOL } from '../shared/loot';
+import { rollEnemyDrop, rollLoot, BRONZE_POOL, SILVER_POOL, GOLD_POOL, initLootSeed } from '../shared/loot';
+import { validateManifest, LEVEL_1_MANIFEST } from '../shared/manifest';
 
 const CANVAS_W = 960;
 const CANVAS_H = 640;
@@ -81,6 +82,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   init(data: { character: CharacterDefinition }): void {
+    // Generate session seed from timestamp, init loot RNG
+    const sessionSeed = Date.now() & 0xffffffff;
+    initLootSeed(sessionSeed);
+
+    // Validate level manifest — throws hard error if level is unwinnable
+    validateManifest(LEVEL_1_MANIFEST);
+
     this.selectedCharacter = data.character;
     this.triggeredPlates.clear();
     this.transitioning        = false;
