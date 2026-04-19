@@ -19,6 +19,9 @@ import { InfiniteLoop } from '../game/entities/InfiniteLoop';
 import { EnemyProjectile } from '../game/entities/EnemyProjectile';
 import { PauseManager } from '../game/PauseManager';
 import type { CharacterDefinition } from '../shared/characters';
+import { Inventory } from '../game/Inventory';
+import { KeyItem } from '../game/entities/KeyItem';
+import { Chest } from '../game/entities/Chest';
 
 const CANVAS_W = 960;
 const CANVAS_H = 640;
@@ -48,6 +51,7 @@ export class GameScene extends Phaser.Scene {
   private shiftKey!: Phaser.Input.Keyboard.Key;
   private jKey!: Phaser.Input.Keyboard.Key;
   private pKey!: Phaser.Input.Keyboard.Key;
+  private eKey!: Phaser.Input.Keyboard.Key;
 
   private transitioning = false;
   private transitionInProgress = false;
@@ -56,6 +60,11 @@ export class GameScene extends Phaser.Scene {
   private readonly enemyMap = new Map<string, Enemy[]>();
   private activeProjectiles: EnemyProjectile[] = [];
   private aiDebugOn = false;
+
+  private inventory!: Inventory;
+  private readonly keyMap   = new Map<string, KeyItem[]>();
+  private readonly chestMap = new Map<string, Chest[]>();
+  private chestColliders: Phaser.Physics.Arcade.Collider[] = [];
 
   // Configurable level spawn — override per level in future phases
   private readonly LEVEL_SPAWN = { roomId: 'room_01', tileX: 15, tileY: 8 };
@@ -72,6 +81,10 @@ export class GameScene extends Phaser.Scene {
     this.aiDebugOn = false;
     this.enemyMap.clear();
     this.activeProjectiles = [];
+    this.inventory = new Inventory();
+    this.keyMap.clear();
+    this.chestMap.clear();
+    this.chestColliders = [];
   }
 
   create(): void {
@@ -95,6 +108,7 @@ export class GameScene extends Phaser.Scene {
 
     this.jKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.J);
     this.pKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.P);
+    this.eKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.E);
 
     this.pauseManager = new PauseManager(this);
     this.hud          = new HUD(this, this.selectedCharacter);
@@ -229,9 +243,36 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    // ── Key pickup ────────────────────────────────────────────────────────────
+    for (const item of this.keyMap.get(this.currentRoom.roomData.id) ?? []) {
+      if (!item.isCollected() && this.aabbOverlap(this.player.getPhysicsObject(), item.getPhysicsCarrier())) {
+        item.collect();
+        this.inventory.addKey(item.getTier());
+      }
+    }
+
+    // ── Chest interaction ─────────────────────────────────────────────────────
+    if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+      for (const chest of this.chestMap.get(this.currentRoom.roomData.id) ?? []) {
+        if (!chest.isOpen()) {
+          const dx = chest.getX() - this.player.getX();
+          const dy = chest.getY() - this.player.getY();
+          if (Math.sqrt(dx * dx + dy * dy) <= 48 && this.inventory.useKey(chest.getTier())) {
+            chest.open();
+            break;
+          }
+        }
+      }
+    }
+
     // ── HUD update ────────────────────────────────────────────────────────────
     this.hud.setHP(this.player.getHP(), this.player.getMaxHP());
     this.hud.setMP(this.player.getMP(), this.player.getMaxMP());
+    this.hud.updateKeys(
+      this.inventory.getKeys('bronze'),
+      this.inventory.getKeys('silver'),
+      this.inventory.getKeys('gold'),
+    );
 
     this.debugOverlay.update(this.player, this.currentRoom, currentEnemies);
   }
@@ -265,6 +306,7 @@ export class GameScene extends Phaser.Scene {
 
     this.hud.setRoomName(roomData.name);
     this.triggeredPlates.clear();
+    this.activateRoom(roomData);
 
     const enemies = this.getOrCreateRoomEnemies(roomData.id);
     for (const enemy of enemies) {
@@ -348,6 +390,17 @@ export class GameScene extends Phaser.Scene {
     this.triggeredPlates.clear();
     oldRoom.destroy();
 
+    // ── Reset keys, chests, and inventory ────────────────────────────────────
+    for (const items  of this.keyMap.values())   for (const item  of items)  item.destroy();
+    this.keyMap.clear();
+    for (const chests of this.chestMap.values())  for (const chest of chests) chest.destroy();
+    this.chestMap.clear();
+    for (const col of this.chestColliders) col.destroy();
+    this.chestColliders = [];
+    this.inventory.reset();
+    this.activateRoom(spawnRoomData);
+    this.hud.updateKeys(0, 0, 0);
+
     const enemies = this.getOrCreateRoomEnemies(this.LEVEL_SPAWN.roomId);
     for (const enemy of enemies) {
       if (!enemy.isDead()) {
@@ -424,6 +477,7 @@ export class GameScene extends Phaser.Scene {
         this.hud.setRoomName(destRoomData.name);
         this.triggeredPlates.clear();
         oldRoom.destroy();
+        this.activateRoom(destRoomData);
 
         // Wire colliders for entering-room enemies; hide others
         const enteringEnemies = this.getOrCreateRoomEnemies(dest.roomId);
@@ -454,6 +508,44 @@ export class GameScene extends Phaser.Scene {
       const origColor = 0x1a4a6a;
       rect.setFillStyle(0x88ddff);
       this.time.delayedCall(180, () => { rect.setFillStyle(origColor); });
+    }
+  }
+
+  // ── Key / chest room activation ───────────────────────────────────────────────
+
+  private activateRoom(roomData: RoomData): void {
+    if (!this.keyMap.has(roomData.id)) {
+      this.keyMap.set(roomData.id, (roomData.keys ?? []).map(kd =>
+        new KeyItem(
+          this,
+          PLAYFIELD_X + kd.tileX * TILE_SIZE + TILE_SIZE / 2,
+          PLAYFIELD_Y + kd.tileY * TILE_SIZE + TILE_SIZE / 2,
+          kd.tier,
+        )
+      ));
+    }
+    if (!this.chestMap.has(roomData.id)) {
+      this.chestMap.set(roomData.id, (roomData.chests ?? []).map(cd =>
+        new Chest(
+          this,
+          PLAYFIELD_X + cd.tileX * TILE_SIZE + TILE_SIZE / 2,
+          PLAYFIELD_Y + cd.tileY * TILE_SIZE + TILE_SIZE / 2,
+          cd.tier,
+        )
+      ));
+    }
+
+    for (const [rid, items]  of this.keyMap)   for (const item  of items)  item.setVisible(rid === roomData.id);
+    for (const [rid, chests] of this.chestMap)  for (const chest of chests) chest.setVisible(rid === roomData.id);
+
+    for (const col of this.chestColliders) col.destroy();
+    this.chestColliders = [];
+    for (const chest of this.chestMap.get(roomData.id) ?? []) {
+      if (!chest.isOpen()) {
+        this.chestColliders.push(
+          this.physics.add.collider(this.player.getPhysicsObject(), chest.getPhysicsCarrier())
+        );
+      }
     }
   }
 

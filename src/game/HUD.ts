@@ -15,6 +15,9 @@ export class HUD {
   private readonly pauseBtn: Phaser.GameObjects.Rectangle;
   private pauseCallback: (() => void) | null = null;
 
+  private readonly bottomDiamonds: Phaser.GameObjects.Rectangle[];
+  private readonly bottomCounts: Phaser.GameObjects.Text[];
+
   private readonly keyActiveColors: number[] = [0xcd7f32, 0xc0c0c0, 0xffd700];
   private readonly keyMap: Record<'bronze' | 'silver' | 'gold', number> = {
     bronze: 0, silver: 1, gold: 2,
@@ -115,6 +118,21 @@ export class HUD {
       if (this.pauseCallback) this.pauseCallback();
     });
 
+    // ── Bottom bar key slots (bronze / silver / gold diamonds, bottom-left) ───
+    const bottomTierColors = [0xcd7f32, 0xaaaaaa, 0xffd700];
+    this.bottomDiamonds = bottomTierColors.map((color, i) => {
+      const kx = 18 + i * 28;
+      return scene.add.rectangle(kx, 616, 14, 14, 0x000000, 0)
+        .setStrokeStyle(1.5, color)
+        .setRotation(Math.PI / 4)
+        .setDepth(DEPTH);
+    });
+    this.bottomCounts = bottomTierColors.map((_, i) => {
+      return scene.add.text(18 + i * 28 + 12, 616, '', {
+        fontFamily: 'monospace', fontSize: '11px', color: '#ffffff',
+      }).setOrigin(0, 0.5).setDepth(DEPTH).setVisible(false);
+    });
+
     // Seed initial values
     this.setHP(character.stats.hp, character.stats.hp);
     this.setMP(character.stats.mp, character.stats.mp);
@@ -143,6 +161,20 @@ export class HUD {
 
   setPauseCallback(cb: () => void): void {
     this.pauseCallback = cb;
+  }
+
+  updateKeys(bronze: number, silver: number, gold: number): void {
+    const counts = [bronze, silver, gold];
+    const colors = [0xcd7f32, 0xaaaaaa, 0xffd700];
+    for (let i = 0; i < 3; i++) {
+      if (counts[i] > 0) {
+        this.bottomDiamonds[i].setFillStyle(colors[i]);
+        this.bottomCounts[i].setText(`${counts[i]}`).setVisible(true);
+      } else {
+        this.bottomDiamonds[i].setFillStyle(0x000000, 0);
+        this.bottomCounts[i].setVisible(false);
+      }
+    }
   }
 
   setPauseState(paused: boolean): void {

@@ -1,3 +1,5 @@
+import type { KeyTier } from '../game/Inventory';
+
 export interface DoorTarget {
   roomId: string;
   spawnTile: { x: number; y: number };
@@ -17,6 +19,8 @@ export interface RoomData {
   doors: Record<string, DoorTarget>;
   pressurePlates?: PressurePlateEvent[];
   signs?: Record<string, string>;
+  keys?:   Array<{ tileX: number; tileY: number; tier: KeyTier }>;
+  chests?: Array<{ tileX: number; tileY: number; tier: KeyTier }>;
 }
 
 // Room 1: The First Chamber
@@ -50,6 +54,8 @@ export const ROOM_01: RoomData = {
     '0,8':   { roomId: 'room_01', spawnTile: { x: 28, y: 8 } },
     '29,8':  { roomId: 'room_01', spawnTile: { x: 1, y: 8 } },
   },
+  keys:   [{ tileX: 5, tileY: 4, tier: 'bronze' }],
+  chests: [{ tileX: 24, tileY: 4, tier: 'bronze' }],
 };
 
 // Room 2: The Crooked Walk
