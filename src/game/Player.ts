@@ -419,6 +419,10 @@ export class Player {
     this.mp = amount === 'full' ? this.maxMp : Math.min(this.maxMp, this.mp + amount);
   }
 
+  spendMP(amount: number): void {
+    this.mp = Math.max(0, this.mp - amount);
+  }
+
   private handlePlayerDeath(): void {
     this.dead         = true;
     this.inputEnabled = false;

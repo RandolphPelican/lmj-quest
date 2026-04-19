@@ -11,6 +11,18 @@ export interface PressurePlateEvent {
   opensLockedDoorAt: { x: number; y: number };
 }
 
+export interface BarrierDef {
+  id:    string;
+  tiles: Array<{ x: number; y: number }>;
+}
+
+export interface ManaShrineData {
+  tileX:           number;
+  tileY:           number;
+  mpCost:          number;
+  triggersBarrier: string;
+}
+
 export interface RoomData {
   id: string;
   name: string;
@@ -19,45 +31,71 @@ export interface RoomData {
   doors: Record<string, DoorTarget>;
   pressurePlates?: PressurePlateEvent[];
   signs?: Record<string, string>;
-  keys?:   Array<{ tileX: number; tileY: number; tier: KeyTier }>;
-  chests?: Array<{ tileX: number; tileY: number; tier: KeyTier }>;
+  keys?:    Array<{ tileX: number; tileY: number; tier: KeyTier }>;
+  chests?:  Array<{ tileX: number; tileY: number; tier: KeyTier; fixedLoot?: string }>;
+  barriers?:       BarrierDef[];
+  manaShrines?:    ManaShrineData[];
+  sentinelTriggers?: Array<{ tileX: number; tileY: number }>;
 }
 
-// Room 1: The First Chamber
-// 30x17, doors on all 4 sides, two pillar clusters, bronze key + chest, sign with Lincoln's message
+// Room 01: Boot Up
+// Player spawns at (15,2). Blue Z-barrier wall (cols 11-22, rows 4-11) divides the room.
+// Left pocket: key at (3,6), chest at (3,13) [mp_large fixed loot], two signs.
+// Right side: mana shrine at (20,13) behind pillar corridor, sentinel trigger at (20,8).
+// Barrier dissolves when player stands within 48px of shrine with 20+ MP.
 export const ROOM_01: RoomData = {
   id: 'room_01',
-  name: 'The First Chamber',
+  name: 'Boot Up',
   layout: [
-    '###############D##############',
-    '#............................#',
-    '#.........G..................#',
-    '#......PP............PP......#',
-    '#......PP............PP......#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    'D............................D',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#......PP............PP......#',
-    '#......PP............PP......#',
-    '#............................#',
-    '#............................#',
-    '###############D##############',
+    '##############################',  // row 0
+    '#............................#',  // row 1
+    '#..G.........................#',  // row 2  — Dad's sign at (3,2)
+    '#............................#',  // row 3
+    '#..........ZZZZZZZZZZZZ......#',  // row 4  — barrier top, Z at cols 11-22
+    '#..........Z.................#',  // row 5  — left barrier wall at col 11
+    '#..........Z.................#',  // row 6
+    '#..........Z.................#',  // row 7
+    '#..........Z.................#',  // row 8  — sentinel trigger at col 20 (open floor)
+    '#..........Z.................#',  // row 9
+    '#......G...Z.................#',  // row 10 — hint sign G at (7,10), barrier wall at col 11
+    '#..........ZZZZZZZZZZZZ......#',  // row 11 — barrier bottom
+    '#....PPPPPPPPPP..............#',  // row 12 — switchback pillar top
+    '#....P..............G........#',  // row 13 — left pillar, shrine sign G at (20,13)
+    '#....PPPPPPPPPP..............#',  // row 14 — switchback pillar bottom
+    '#............................#',  // row 15
+    '###############D##############',  // row 16 — south door to room_02
   ],
   doors: {
-    '15,0':  { roomId: 'room_02', spawnTile: { x: 15, y: 15 } },
-    '15,16': { roomId: 'room_03', spawnTile: { x: 15, y: 1  } },
-    '0,8':   { roomId: 'room_01', spawnTile: { x: 28, y: 8  } },
-    '29,8':  { roomId: 'room_01', spawnTile: { x: 1,  y: 8  } },
+    '15,16': { roomId: 'room_02', spawnTile: { x: 15, y: 1 } },
   },
-  keys:   [{ tileX: 5,  tileY: 4, tier: 'bronze' }],
-  chests: [{ tileX: 24, tileY: 4, tier: 'bronze' }],
+  keys:   [{ tileX: 3, tileY: 6,  tier: 'bronze' }],
+  chests: [{ tileX: 3, tileY: 13, tier: 'bronze', fixedLoot: 'mp_large' }],
   signs: {
-    '10,2': "Lincoln Mark James,\nI built this especially for you\nto show you that you can do\nanything you want in this life\nand I love you for eternity.\nHave fun!",
+    '3,2':   "Lincoln Mark James,\nI built this especially for you\nto show you that you can do\nanything you want in this life\nand I love you for eternity.\nHave fun!",
+    '7,10':  "Your magic near the shrine\nreveals the path forward.\nWatch your mana meter.",
+    '20,13': "Mana powers your magic attacks\nAND opens ancient shrines.\nSpend it wisely, hero. — Dad",
   },
+  barriers: [{
+    id: 'barrier_01',
+    tiles: [
+      { x: 11, y: 4  }, { x: 12, y: 4  }, { x: 13, y: 4  },
+      { x: 14, y: 4  }, { x: 15, y: 4  }, { x: 16, y: 4  },
+      { x: 17, y: 4  }, { x: 18, y: 4  }, { x: 19, y: 4  },
+      { x: 20, y: 4  }, { x: 21, y: 4  }, { x: 22, y: 4  },
+      { x: 11, y: 5  }, { x: 11, y: 6  }, { x: 11, y: 7  },
+      { x: 11, y: 8  }, { x: 11, y: 9  }, { x: 11, y: 10 },
+      { x: 11, y: 11 }, { x: 12, y: 11 }, { x: 13, y: 11 },
+      { x: 14, y: 11 }, { x: 15, y: 11 }, { x: 16, y: 11 },
+      { x: 17, y: 11 }, { x: 18, y: 11 }, { x: 19, y: 11 },
+      { x: 20, y: 11 }, { x: 21, y: 11 }, { x: 22, y: 11 },
+    ],
+  }],
+  manaShrines: [{
+    tileX: 20, tileY: 13,
+    mpCost: 20,
+    triggersBarrier: 'barrier_01',
+  }],
+  sentinelTriggers: [{ tileX: 20, tileY: 8 }],
 };
 
 // Room 2: The Crooked Walk

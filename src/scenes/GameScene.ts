@@ -24,8 +24,10 @@ import { SignPopup } from '../game/SignPopup';
 import { KeyItem } from '../game/entities/KeyItem';
 import { Chest } from '../game/entities/Chest';
 import { LootItem } from '../game/entities/LootItem';
-import { rollEnemyDrop, rollLoot, BRONZE_POOL, SILVER_POOL, GOLD_POOL, initLootSeed } from '../shared/loot';
+import { rollEnemyDrop, rollLoot, BRONZE_POOL, SILVER_POOL, GOLD_POOL, LOOT_TABLE, initLootSeed } from '../shared/loot';
 import { validateManifest, LEVEL_1_MANIFEST } from '../shared/manifest';
+import { ManaShrine } from '../game/entities/ManaShrine';
+import { Sentinel } from '../game/entities/Sentinel';
 
 const CANVAS_W = 960;
 const CANVAS_H = 640;
@@ -71,11 +73,17 @@ export class GameScene extends Phaser.Scene {
   private readonly keyMap   = new Map<string, KeyItem[]>();
   private readonly chestMap = new Map<string, Chest[]>();
   private chestColliders: Phaser.Physics.Arcade.Collider[] = [];
-  private readonly lootMap    = new Map<string, LootItem[]>();
-  private readonly droppedSet = new Set<Enemy>();
+  private readonly lootMap         = new Map<string, LootItem[]>();
+  private readonly droppedSet      = new Set<Enemy>();
+  private readonly barrierMap      = new Map<string, Phaser.Physics.Arcade.StaticGroup>();
+  private readonly shrineMap       = new Map<string, ManaShrine[]>();
+  private readonly sentinelMap     = new Map<string, Sentinel[]>();
+  private readonly chestFixedLoot  = new Map<object, string>();
+  private readonly sentinelKilledSet = new Set<Sentinel>();
+  private manaRefillActive = false;
 
   // Configurable level spawn — override per level in future phases
-  private readonly LEVEL_SPAWN = { roomId: 'room_01', tileX: 15, tileY: 8 };
+  private readonly LEVEL_SPAWN = { roomId: 'room_01', tileX: 15, tileY: 2 };
 
   constructor() {
     super({ key: 'GameScene' });
@@ -102,6 +110,15 @@ export class GameScene extends Phaser.Scene {
     this.chestColliders = [];
     this.lootMap.clear();
     this.droppedSet.clear();
+    for (const group of this.barrierMap.values()) group.clear(true, true);
+    this.barrierMap.clear();
+    for (const shrines   of this.shrineMap.values())   for (const s of shrines)   s.destroy();
+    this.shrineMap.clear();
+    for (const sentinels of this.sentinelMap.values()) for (const s of sentinels) s.forceDestroy();
+    this.sentinelMap.clear();
+    this.chestFixedLoot.clear();
+    this.sentinelKilledSet.clear();
+    this.manaRefillActive = false;
   }
 
   create(): void {
@@ -203,7 +220,10 @@ export class GameScene extends Phaser.Scene {
                 const pool     = chest.getTier() === 'gold'   ? GOLD_POOL
                                : chest.getTier() === 'silver' ? SILVER_POOL
                                : BRONZE_POOL;
-                const lootDef  = rollLoot(pool);
+                const fixedId  = this.chestFixedLoot.get(chest);
+                const lootDef  = fixedId
+                  ? (LOOT_TABLE.find(l => l.id === fixedId) ?? rollLoot(pool))
+                  : rollLoot(pool);
                 const lootItem = new LootItem(this, chest.getX(), chest.getY() + 32, lootDef);
                 const roomLoot = this.lootMap.get(this.currentRoom.roomData.id) ?? [];
                 roomLoot.push(lootItem);
@@ -229,14 +249,39 @@ export class GameScene extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.jKey)) this.player.trySwingSword();
     if (Phaser.Input.Keyboard.JustDown(this.pKey)) this.player.tryWhirlingSlash();
 
-    const currentEnemies = this.enemyMap.get(this.currentRoom.roomData.id) ?? [];
+    // ── Sentinel trigger + permanent-kill tracking ────────────────────────────
+    const currentSentinels = this.sentinelMap.get(this.currentRoom.roomData.id) ?? [];
+    for (const sentinel of currentSentinels) {
+      if (!sentinel.isSpawned() && !sentinel.isDead()) {
+        const sx  = sentinel.getX() - this.player.getX();
+        const sy  = sentinel.getY() - this.player.getY();
+        if (Math.sqrt(sx * sx + sy * sy) <= 96) {
+          sentinel.spawn();
+          sentinel.wireWallCollider(this.currentRoom.getPhysicsGroup());
+        }
+      }
+      // Sentinels don't respawn — cancel the base-class respawn timer immediately on death
+      if (sentinel.isDead() && !this.sentinelKilledSet.has(sentinel)) {
+        this.sentinelKilledSet.add(sentinel);
+        sentinel.forceDestroy();
+      }
+    }
+
+    // Spawned sentinels join the standard combat target list
+    const currentEnemies: Enemy[] = [
+      ...(this.enemyMap.get(this.currentRoom.roomData.id) ?? []),
+      ...currentSentinels.filter(s => s.isSpawned()),
+    ];
 
     // ── Enemy updates + drop tracking ────────────────────────────────────────
     for (const enemy of currentEnemies) {
-      enemy.update(time, delta, this.player, this.currentRoom);
+      if (!enemy.isDead()) enemy.update(time, delta, this.player, this.currentRoom);
       if (enemy.isDead() && !this.droppedSet.has(enemy)) {
         this.droppedSet.add(enemy);
-        const drop = rollEnemyDrop();
+        // Sentinel always drops chicken nuggets; regular enemies use random drop table
+        const drop = enemy instanceof Sentinel
+          ? LOOT_TABLE.find(l => l.id === 'nuggets')!
+          : rollEnemyDrop();
         if (drop) {
           const lootItem = new LootItem(this, enemy.getX(), enemy.getY(), drop);
           const roomLoot = this.lootMap.get(this.currentRoom.roomData.id) ?? [];
@@ -292,6 +337,18 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
+    // ── Sentinel strike hitbox damage ────────────────────────────────────────
+    if (!this.player.isInvincible() && !this.player.isDead()) {
+      for (const sentinel of currentSentinels) {
+        if (!sentinel.isSpawned() || sentinel.isDead()) continue;
+        const sh = sentinel.getStrikeHitbox();
+        if (sh && this.aabbOverlap(sh, this.player.getPhysicsObject())) {
+          this.player.takeDamage(15);
+          if (this.player.isDead()) { this.transitioning = true; return; }
+        }
+      }
+    }
+
     // ── Projectile updates & overlap ──────────────────────────────────────────
     this.activeProjectiles = this.activeProjectiles.filter(p => p.isAlive());
     for (const proj of this.activeProjectiles) {
@@ -317,6 +374,53 @@ export class GameScene extends Phaser.Scene {
         const def = item.getDef();
         if (def.type === 'hp') this.player.heal(def.restore);
         if (def.type === 'mp') this.player.restoreMP(def.restore);
+      }
+    }
+
+    // ── Mana shrine proximity ─────────────────────────────────────────────────
+    const currentShrines = this.shrineMap.get(this.currentRoom.roomData.id) ?? [];
+    for (let i = 0; i < currentShrines.length; i++) {
+      const shrine   = currentShrines[i];
+      if (shrine.isActivated()) continue;
+      const roomDef  = this.currentRoom.roomData.manaShrines?.[i];
+      if (!roomDef) continue;
+      const sx  = shrine.getX() - this.player.getX();
+      const sy  = shrine.getY() - this.player.getY();
+      if (Math.sqrt(sx * sx + sy * sy) <= 48 && this.player.getMP() >= roomDef.mpCost) {
+        this.player.spendMP(roomDef.mpCost);
+        shrine.activate();
+        const barrierGroup = this.barrierMap.get(roomDef.triggersBarrier);
+        if (barrierGroup) {
+          barrierGroup.clear(true, true);
+          this.barrierMap.delete(roomDef.triggersBarrier);
+          // Hide the Z-tile visuals that belong to this barrier
+          const barrierDef = this.currentRoom.roomData.barriers?.find(
+            b => b.id === roomDef.triggersBarrier,
+          );
+          if (barrierDef) {
+            for (const t of barrierDef.tiles) {
+              this.currentRoom.getVisualRectAt(t.x, t.y)?.setVisible(false);
+            }
+          }
+        }
+        this.manaRefillActive = false;
+      }
+    }
+
+    // ── Mana refill for room_01 (spawns mp_large if player runs dry before shrine) ──
+    if (this.currentRoom.roomData.id === 'room_01') {
+      const barrier = this.barrierMap.get('barrier_01');
+      if (barrier && this.player.getMP() === 0 && !this.manaRefillActive) {
+        this.manaRefillActive = true;
+        const def     = LOOT_TABLE.find(l => l.id === 'mp_large')!;
+        const refill  = new LootItem(this,
+          PLAYFIELD_X + 17 * TILE_SIZE + TILE_SIZE / 2,
+          PLAYFIELD_Y + 13 * TILE_SIZE + TILE_SIZE / 2,
+          def,
+        );
+        const roomLoot = this.lootMap.get('room_01') ?? [];
+        roomLoot.push(refill);
+        this.lootMap.set('room_01', roomLoot);
       }
     }
 
@@ -408,11 +512,7 @@ export class GameScene extends Phaser.Scene {
 
   private createEnemiesForRoom(roomId: string): Enemy[] {
     if (roomId === 'room_01') {
-      return [new NullPointer(
-        this,
-        PLAYFIELD_X + 24 * TILE_SIZE + TILE_SIZE / 2,
-        PLAYFIELD_Y +  8 * TILE_SIZE + TILE_SIZE / 2,
-      )];
+      return []; // Sentinel is managed separately via sentinelMap
     }
     if (roomId === 'room_02') {
       return [new StackOverflow(
@@ -522,6 +622,19 @@ export class GameScene extends Phaser.Scene {
     for (const items of this.lootMap.values())  for (const item of items) item.destroy();
     this.lootMap.clear();
     this.droppedSet.clear();
+    for (const group of this.barrierMap.values()) group.clear(true, true);
+    this.barrierMap.clear();
+    for (const shrines   of this.shrineMap.values())   for (const s of shrines)   s.destroy();
+    this.shrineMap.clear();
+    for (const sentinels of this.sentinelMap.values()) {
+      for (const s of sentinels) {
+        if (!this.sentinelKilledSet.has(s)) s.forceDestroy();
+      }
+    }
+    this.sentinelMap.clear();
+    this.chestFixedLoot.clear();
+    this.sentinelKilledSet.clear();
+    this.manaRefillActive = false;
     this.activateRoom(spawnRoomData);
     this.hud.updateKeys(0, 0, 0);
 
@@ -649,14 +762,60 @@ export class GameScene extends Phaser.Scene {
       ));
     }
     if (!this.chestMap.has(roomData.id)) {
-      this.chestMap.set(roomData.id, (roomData.chests ?? []).map(cd =>
-        new Chest(
+      const chests = (roomData.chests ?? []).map(cd => {
+        const chest = new Chest(
           this,
           PLAYFIELD_X + cd.tileX * TILE_SIZE + TILE_SIZE / 2,
           PLAYFIELD_Y + cd.tileY * TILE_SIZE + TILE_SIZE / 2,
           cd.tier,
-        )
+        );
+        if (cd.fixedLoot) this.chestFixedLoot.set(chest, cd.fixedLoot);
+        return chest;
+      });
+      this.chestMap.set(roomData.id, chests);
+    }
+
+    // ── Barrier physics groups ────────────────────────────────────────────────
+    if (!this.barrierMap.has(roomData.id + '_checked') && roomData.barriers) {
+      for (const barrier of roomData.barriers) {
+        if (this.barrierMap.has(barrier.id)) continue;
+        const group = this.physics.add.staticGroup();
+        for (const t of barrier.tiles) {
+          const wx   = PLAYFIELD_X + t.x * TILE_SIZE + TILE_SIZE / 2;
+          const wy   = PLAYFIELD_Y + t.y * TILE_SIZE + TILE_SIZE / 2;
+          const tile = this.physics.add.staticImage(wx, wy, '__DEFAULT');
+          tile.setVisible(false);
+          (tile.body as Phaser.Physics.Arcade.StaticBody).setSize(TILE_SIZE, TILE_SIZE);
+          tile.refreshBody();
+          group.add(tile);
+        }
+        this.barrierMap.set(barrier.id, group);
+        this.physics.add.collider(this.player.getPhysicsObject(), group);
+      }
+      this.barrierMap.set(roomData.id + '_checked', this.physics.add.staticGroup());
+    }
+
+    // ── Mana shrines ──────────────────────────────────────────────────────────
+    if (!this.shrineMap.has(roomData.id) && roomData.manaShrines) {
+      const shrines = roomData.manaShrines.map(s => new ManaShrine(
+        this,
+        PLAYFIELD_X + s.tileX * TILE_SIZE + TILE_SIZE / 2,
+        PLAYFIELD_Y + s.tileY * TILE_SIZE + TILE_SIZE / 2,
       ));
+      this.shrineMap.set(roomData.id, shrines);
+      for (const shrine of shrines) {
+        this.physics.add.collider(this.player.getPhysicsObject(), shrine.getCarrier());
+      }
+    }
+
+    // ── Sentinels (dormant until triggered) ───────────────────────────────────
+    if (!this.sentinelMap.has(roomData.id) && roomData.sentinelTriggers) {
+      const sentinels = roomData.sentinelTriggers.map(t => new Sentinel(
+        this,
+        PLAYFIELD_X + t.tileX * TILE_SIZE + TILE_SIZE / 2,
+        PLAYFIELD_Y + t.tileY * TILE_SIZE + TILE_SIZE / 2,
+      ));
+      this.sentinelMap.set(roomData.id, sentinels);
     }
 
     for (const [rid, items]  of this.keyMap)   for (const item  of items)  item.setVisible(rid === roomData.id);
