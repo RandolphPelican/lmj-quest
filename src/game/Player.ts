@@ -386,6 +386,15 @@ export class Player {
     if (this.hp <= 0) this.handlePlayerDeath();
   }
 
+  heal(amount: number | 'full'): void {
+    if (this.dead) return;
+    this.hp = amount === 'full' ? this.maxHp : Math.min(this.maxHp, this.hp + amount);
+  }
+
+  restoreMP(amount: number | 'full'): void {
+    this.mp = amount === 'full' ? this.maxMp : Math.min(this.maxMp, this.mp + amount);
+  }
+
   private handlePlayerDeath(): void {
     this.dead         = true;
     this.inputEnabled = false;

@@ -23,6 +23,8 @@ import { Inventory } from '../game/Inventory';
 import { SignPopup } from '../game/SignPopup';
 import { KeyItem } from '../game/entities/KeyItem';
 import { Chest } from '../game/entities/Chest';
+import { LootItem } from '../game/entities/LootItem';
+import { rollEnemyDrop, rollLoot, BRONZE_POOL, SILVER_POOL, GOLD_POOL } from '../shared/loot';
 
 const CANVAS_W = 960;
 const CANVAS_H = 640;
@@ -68,6 +70,8 @@ export class GameScene extends Phaser.Scene {
   private readonly keyMap   = new Map<string, KeyItem[]>();
   private readonly chestMap = new Map<string, Chest[]>();
   private chestColliders: Phaser.Physics.Arcade.Collider[] = [];
+  private readonly lootMap    = new Map<string, LootItem[]>();
+  private readonly droppedSet = new Set<Enemy>();
 
   // Configurable level spawn — override per level in future phases
   private readonly LEVEL_SPAWN = { roomId: 'room_01', tileX: 15, tileY: 8 };
@@ -88,6 +92,8 @@ export class GameScene extends Phaser.Scene {
     this.keyMap.clear();
     this.chestMap.clear();
     this.chestColliders = [];
+    this.lootMap.clear();
+    this.droppedSet.clear();
   }
 
   create(): void {
@@ -186,6 +192,14 @@ export class GameScene extends Phaser.Scene {
               const dy = chest.getY() - this.player.getY();
               if (Math.sqrt(dx * dx + dy * dy) <= 48 && this.inventory.useKey(chest.getTier())) {
                 chest.open();
+                const pool     = chest.getTier() === 'gold'   ? GOLD_POOL
+                               : chest.getTier() === 'silver' ? SILVER_POOL
+                               : BRONZE_POOL;
+                const lootDef  = rollLoot(pool);
+                const lootItem = new LootItem(this, chest.getX(), chest.getY() + 32, lootDef);
+                const roomLoot = this.lootMap.get(this.currentRoom.roomData.id) ?? [];
+                roomLoot.push(lootItem);
+                this.lootMap.set(this.currentRoom.roomData.id, roomLoot);
                 break;
               }
             }
@@ -208,9 +222,19 @@ export class GameScene extends Phaser.Scene {
 
     const currentEnemies = this.enemyMap.get(this.currentRoom.roomData.id) ?? [];
 
-    // ── Enemy updates ─────────────────────────────────────────────────────────
+    // ── Enemy updates + drop tracking ────────────────────────────────────────
     for (const enemy of currentEnemies) {
       enemy.update(time, delta, this.player, this.currentRoom);
+      if (enemy.isDead() && !this.droppedSet.has(enemy)) {
+        this.droppedSet.add(enemy);
+        const drop = rollEnemyDrop();
+        if (drop) {
+          const lootItem = new LootItem(this, enemy.getX(), enemy.getY(), drop);
+          const roomLoot = this.lootMap.get(this.currentRoom.roomData.id) ?? [];
+          roomLoot.push(lootItem);
+          this.lootMap.set(this.currentRoom.roomData.id, roomLoot);
+        }
+      }
     }
 
     // ── Sword hit detection ───────────────────────────────────────────────────
@@ -273,6 +297,17 @@ export class GameScene extends Phaser.Scene {
             return;
           }
         }
+      }
+    }
+
+    // ── Loot pickup ───────────────────────────────────────────────────────────
+    for (const item of this.lootMap.get(this.currentRoom.roomData.id) ?? []) {
+      if (item.isCollected()) continue;
+      if (this.aabbOverlap(this.player.getPhysicsObject(), item.getPhysicsCarrier())) {
+        item.collect();
+        const def = item.getDef();
+        if (def.type === 'hp') this.player.heal(def.restore);
+        if (def.type === 'mp') this.player.restoreMP(def.restore);
       }
     }
 
@@ -435,6 +470,9 @@ export class GameScene extends Phaser.Scene {
     for (const col of this.chestColliders) col.destroy();
     this.chestColliders = [];
     this.inventory.reset();
+    for (const items of this.lootMap.values())  for (const item of items) item.destroy();
+    this.lootMap.clear();
+    this.droppedSet.clear();
     this.activateRoom(spawnRoomData);
     this.hud.updateKeys(0, 0, 0);
 
@@ -574,6 +612,7 @@ export class GameScene extends Phaser.Scene {
 
     for (const [rid, items]  of this.keyMap)   for (const item  of items)  item.setVisible(rid === roomData.id);
     for (const [rid, chests] of this.chestMap)  for (const chest of chests) chest.setVisible(rid === roomData.id);
+    for (const [rid, loots]  of this.lootMap)   for (const loot  of loots)  loot.setVisible(rid === roomData.id);
 
     for (const col of this.chestColliders) col.destroy();
     this.chestColliders = [];
