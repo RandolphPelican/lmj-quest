@@ -33,9 +33,10 @@ export interface RoomData {
   signs?: Record<string, string>;
   keys?:    Array<{ tileX: number; tileY: number; tier: KeyTier }>;
   chests?:  Array<{ tileX: number; tileY: number; tier: KeyTier; fixedLoot?: string }>;
-  barriers?:       BarrierDef[];
-  manaShrines?:    ManaShrineData[];
+  barriers?:         BarrierDef[];
+  manaShrines?:      ManaShrineData[];
   sentinelTriggers?: Array<{ tileX: number; tileY: number }>;
+  deadlocks?:        Array<{ tileX: number; tileY: number }>;
 }
 
 // Room 01: Boot Up

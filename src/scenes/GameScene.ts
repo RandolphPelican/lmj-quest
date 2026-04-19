@@ -28,6 +28,8 @@ import { rollEnemyDrop, rollLoot, BRONZE_POOL, SILVER_POOL, GOLD_POOL, LOOT_TABL
 import { validateManifest, LEVEL_1_MANIFEST } from '../shared/manifest';
 import { ManaShrine } from '../game/entities/ManaShrine';
 import { Sentinel } from '../game/entities/Sentinel';
+import { ForkBombJr } from '../game/entities/ForkBomb';
+import { Deadlock } from '../game/entities/Deadlock';
 
 const CANVAS_W = 960;
 const CANVAS_H = 640;
@@ -80,6 +82,7 @@ export class GameScene extends Phaser.Scene {
   private readonly sentinelMap     = new Map<string, Sentinel[]>();
   private readonly chestFixedLoot  = new Map<object, string>();
   private readonly sentinelKilledSet = new Set<Sentinel>();
+  private readonly deadlockMap       = new Map<string, Deadlock[]>();
   private manaRefillActive = false;
 
   // Configurable level spawn — override per level in future phases
@@ -118,6 +121,8 @@ export class GameScene extends Phaser.Scene {
     this.sentinelMap.clear();
     this.chestFixedLoot.clear();
     this.sentinelKilledSet.clear();
+    for (const deadlocks of this.deadlockMap.values()) for (const d of deadlocks) d.forceDestroy();
+    this.deadlockMap.clear();
     this.manaRefillActive = false;
   }
 
@@ -159,6 +164,15 @@ export class GameScene extends Phaser.Scene {
       } else {
         enemy.setVisualVisible(false);
       }
+    });
+
+    // Wire ForkBomb split — GameScene creates Jr instances and adds to enemyMap
+    this.events.on('enemy:spawnForkBombJr', (data: { x: number; y: number; angle: number }) => {
+      const jr = new ForkBombJr(this, data.x, data.y, data.angle);
+      jr.wireWallCollider(this.currentRoom.getPhysicsGroup());
+      const roomEnemies = this.enemyMap.get(this.currentRoom.roomData.id) ?? [];
+      roomEnemies.push(jr);
+      this.enemyMap.set(this.currentRoom.roomData.id, roomEnemies);
     });
 
     // Wire projectile spawning (fired by InfiniteLoop)
@@ -269,10 +283,11 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Spawned sentinels join the standard combat target list
+    // Spawned sentinels and active deadlocks join the standard combat target list
     const currentEnemies: Enemy[] = [
       ...(this.enemyMap.get(this.currentRoom.roomData.id) ?? []),
       ...currentSentinels.filter(s => s.isSpawned()),
+      ...(this.deadlockMap.get(this.currentRoom.roomData.id) ?? []).filter(d => !d.isDead()),
     ];
 
     // ── Enemy updates + drop tracking ────────────────────────────────────────
@@ -423,6 +438,23 @@ export class GameScene extends Phaser.Scene {
         const roomLoot = this.lootMap.get('room_01') ?? [];
         roomLoot.push(refill);
         this.lootMap.set('room_01', roomLoot);
+      }
+    }
+
+    // ── Deadlock beam damage ──────────────────────────────────────────────────
+    const currentDeadlocks = this.deadlockMap.get(this.currentRoom.roomData.id) ?? [];
+    for (const dl of currentDeadlocks) {
+      if (dl.isDead()) continue;
+      dl.update(time, delta, this.player, this.currentRoom);
+      const ddx  = this.player.getX() - dl.getX();
+      const ddy  = this.player.getY() - dl.getY();
+      const ddist = Math.sqrt(ddx * ddx + ddy * ddy);
+      if (ddist < 86 && !this.player.isInvincible() && !this.player.isDead()) {
+        const angleToPlayer = Math.atan2(ddy, ddx);
+        const beamAngle     = dl.getBeamAngle();
+        let   diff          = Math.abs(angleToPlayer - beamAngle) % (Math.PI * 2);
+        if (diff > Math.PI) diff = Math.PI * 2 - diff;
+        if (diff < 0.21) dl.tickBeamDamage(this.player);
       }
     }
 
@@ -641,6 +673,8 @@ export class GameScene extends Phaser.Scene {
     this.sentinelMap.clear();
     this.chestFixedLoot.clear();
     this.sentinelKilledSet.clear();
+    for (const deadlocks of this.deadlockMap.values()) for (const d of deadlocks) d.forceDestroy();
+    this.deadlockMap.clear();
     this.manaRefillActive = false;
     this.activateRoom(spawnRoomData);
     this.hud.updateKeys(0, 0, 0);
@@ -812,6 +846,20 @@ export class GameScene extends Phaser.Scene {
       this.shrineMap.set(roomData.id, shrines);
       for (const shrine of shrines) {
         this.physics.add.collider(this.player.getPhysicsObject(), shrine.getCarrier());
+      }
+    }
+
+    // ── Deadlocks ─────────────────────────────────────────────────────────────
+    if (!this.deadlockMap.has(roomData.id) && roomData.deadlocks) {
+      const deadlocks = roomData.deadlocks.map(d => new Deadlock(
+        this,
+        PLAYFIELD_X + d.tileX * TILE_SIZE + TILE_SIZE / 2,
+        PLAYFIELD_Y + d.tileY * TILE_SIZE + TILE_SIZE / 2,
+      ));
+      this.deadlockMap.set(roomData.id, deadlocks);
+      for (const dl of deadlocks) {
+        dl.wireWallCollider(this.currentRoom.getPhysicsGroup());
+        this.physics.add.collider(this.player.getPhysicsObject(), dl.getPhysicsCarrier());
       }
     }
 
