@@ -5,7 +5,8 @@
       "Bash(grep -v \"//.*scale\")",
       "Bash(node -e \"const p = require\\('./node_modules/phaser/src/scale/const/SCALE_MODE_CONST.js'\\); console.log\\(p\\);\")",
       "Bash(node:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(python3:*)"
     ]
   }
 }

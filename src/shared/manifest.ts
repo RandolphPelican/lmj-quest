@@ -54,10 +54,9 @@ export function validateManifest(manifest: LevelManifest): void {
   console.log(`[Manifest] Level ${manifest.levelId} validated OK — keys: ${JSON.stringify(keyCount)}, chests: ${JSON.stringify(chestCount)}`);
 }
 
-// Level 1 manifest — update as rooms are added in Phase 4.4
 export const LEVEL_1_MANIFEST: LevelManifest = {
   levelId:        'level_01',
-  requiredKeys:   { bronze: 1 },
-  requiredChests: { bronze: 1 },
-  lockedDoors:    { bronze: 0 }, // no locked doors yet — Phase 4.4 adds them
+  requiredKeys:   { bronze: 3 },
+  requiredChests: { bronze: 4 },
+  lockedDoors:    { bronze: 0 },
 };

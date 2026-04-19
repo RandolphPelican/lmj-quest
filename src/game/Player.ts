@@ -26,6 +26,8 @@ export class Player {
   // Terrain
   private speedMult = 1.0;
   private inputEnabled = true;
+  private lavaDamageTimer = 0;
+  private healTimer = 0;
 
   // Facing
   private facing: Facing = Facing.East;
@@ -328,6 +330,28 @@ export class Player {
 
   applyTerrainEffect(flags: number): void {
     this.speedMult = (flags & TileFlag.Tar) !== 0 ? 0.4 : 1.0;
+  }
+
+  applyTerrainTicks(flags: number, delta: number): void {
+    if (flags & TileFlag.Lava) {
+      this.lavaDamageTimer += delta;
+      if (this.lavaDamageTimer >= 500) {
+        this.lavaDamageTimer = 0;
+        this.takeDamage(4);
+      }
+    } else {
+      this.lavaDamageTimer = 0;
+    }
+
+    if (flags & TileFlag.Heal) {
+      this.healTimer += delta;
+      if (this.healTimer >= 1000) {
+        this.healTimer = 0;
+        this.heal(1);
+      }
+    } else {
+      this.healTimer = 0;
+    }
   }
 
   enableInput(): void  { this.inputEnabled = true; }

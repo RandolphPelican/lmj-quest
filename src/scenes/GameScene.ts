@@ -222,6 +222,7 @@ export class GameScene extends Phaser.Scene {
     const flags = this.currentRoom.getFlagsAt(px, py);
 
     this.player.applyTerrainEffect(flags);
+    this.player.applyTerrainTicks(flags, delta);
     this.player.update(this.cursors, this.wasd);
 
     // ── Combat input ──────────────────────────────────────────────────────────
@@ -425,6 +426,46 @@ export class GameScene extends Phaser.Scene {
         this,
         PLAYFIELD_X + 24 * TILE_SIZE + TILE_SIZE / 2,
         PLAYFIELD_Y + 12 * TILE_SIZE + TILE_SIZE / 2,
+      )];
+    }
+    if (roomId === 'room_04') {
+      return [new StackOverflow(
+        this,
+        PLAYFIELD_X + 15 * TILE_SIZE + TILE_SIZE / 2,
+        PLAYFIELD_Y +  8 * TILE_SIZE + TILE_SIZE / 2,
+      )];
+    }
+    if (roomId === 'room_05') {
+      return [
+        new NullPointer(this, PLAYFIELD_X +  8 * TILE_SIZE + TILE_SIZE / 2, PLAYFIELD_Y + 7 * TILE_SIZE + TILE_SIZE / 2),
+        new NullPointer(this, PLAYFIELD_X + 12 * TILE_SIZE + TILE_SIZE / 2, PLAYFIELD_Y + 9 * TILE_SIZE + TILE_SIZE / 2),
+      ];
+    }
+    if (roomId === 'room_07') {
+      return [new InfiniteLoop(
+        this,
+        PLAYFIELD_X + 22 * TILE_SIZE + TILE_SIZE / 2,
+        PLAYFIELD_Y +  8 * TILE_SIZE + TILE_SIZE / 2,
+      )];
+    }
+    if (roomId === 'room_09') {
+      return [
+        new NullPointer(this,   PLAYFIELD_X +  3 * TILE_SIZE + TILE_SIZE / 2, PLAYFIELD_Y +  2 * TILE_SIZE + TILE_SIZE / 2),
+        new StackOverflow(this, PLAYFIELD_X + 26 * TILE_SIZE + TILE_SIZE / 2, PLAYFIELD_Y + 14 * TILE_SIZE + TILE_SIZE / 2),
+        new InfiniteLoop(this,  PLAYFIELD_X + 26 * TILE_SIZE + TILE_SIZE / 2, PLAYFIELD_Y +  2 * TILE_SIZE + TILE_SIZE / 2),
+      ];
+    }
+    if (roomId === 'room_10') {
+      return [
+        new NullPointer(this,  PLAYFIELD_X + 13 * TILE_SIZE + TILE_SIZE / 2, PLAYFIELD_Y + 6 * TILE_SIZE + TILE_SIZE / 2),
+        new InfiniteLoop(this, PLAYFIELD_X + 17 * TILE_SIZE + TILE_SIZE / 2, PLAYFIELD_Y + 6 * TILE_SIZE + TILE_SIZE / 2),
+      ];
+    }
+    if (roomId === 'room_11') {
+      return [new StackOverflow(
+        this,
+        PLAYFIELD_X + 15 * TILE_SIZE + TILE_SIZE / 2,
+        PLAYFIELD_Y +  8 * TILE_SIZE + TILE_SIZE / 2,
       )];
     }
     return [];

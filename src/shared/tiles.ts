@@ -7,6 +7,8 @@ export enum TileFlag {
   PressurePlate = 1 << 4,
   LockedDoor = 1 << 5,
   Sign = 1 << 6,
+  Lava = 1 << 7,
+  Heal = 1 << 8,
 }
 
 export interface TileDefinition {
@@ -36,6 +38,8 @@ export const TILES: Record<string, TileDefinition> = {
   'L': { char: 'L', flags: TileFlag.Solid | TileFlag.LockedDoor,   color: 0x6a4a1a, strokeColor: 0xaa7a2a },
   'O': { char: 'O', flags: TileFlag.Door,                          color: 0x4a3a1a },
   'G': { char: 'G', flags: TileFlag.Solid | TileFlag.Sign,         color: 0x6a5a3a, strokeColor: 0x8a7a5a },
+  'V': { char: 'V', flags: TileFlag.Lava,                         color: 0xff3300 },
+  'H': { char: 'H', flags: TileFlag.Heal,                         color: 0x1a4a1a },
 };
 
 export const FALLBACK_TILE: TileDefinition = TILES['#'];
