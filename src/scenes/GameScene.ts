@@ -108,7 +108,7 @@ export class GameScene extends Phaser.Scene {
 
     this.jKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.J);
     this.pKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.P);
-    this.eKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+    this.eKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.O);
 
     this.pauseManager = new PauseManager(this);
     this.hud          = new HUD(this, this.selectedCharacter);
