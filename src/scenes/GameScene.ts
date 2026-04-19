@@ -83,7 +83,7 @@ export class GameScene extends Phaser.Scene {
   private manaRefillActive = false;
 
   // Configurable level spawn — override per level in future phases
-  private readonly LEVEL_SPAWN = { roomId: 'room_01', tileX: 15, tileY: 2 };
+  private readonly LEVEL_SPAWN = { roomId: 'room_01', tileX: 2, tileY: 8 };
 
   constructor() {
     super({ key: 'GameScene' });
@@ -220,9 +220,11 @@ export class GameScene extends Phaser.Scene {
                 const pool     = chest.getTier() === 'gold'   ? GOLD_POOL
                                : chest.getTier() === 'silver' ? SILVER_POOL
                                : BRONZE_POOL;
-                const fixedId  = this.chestFixedLoot.get(chest);
-                const lootDef  = fixedId
-                  ? (LOOT_TABLE.find(l => l.id === fixedId) ?? rollLoot(pool))
+                const chestDef = this.currentRoom.roomData.chests
+                  ?.find(c => c.tileX === Math.round((chest.getX() - PLAYFIELD_X - TILE_SIZE / 2) / TILE_SIZE)
+                           && c.tileY === Math.round((chest.getY() - PLAYFIELD_Y - TILE_SIZE / 2) / TILE_SIZE));
+                const lootDef = chestDef?.fixedLoot
+                  ? LOOT_TABLE.find(l => l.id === chestDef.fixedLoot)!
                   : rollLoot(pool);
                 const lootItem = new LootItem(this, chest.getX(), chest.getY() + 32, lootDef);
                 const roomLoot = this.lootMap.get(this.currentRoom.roomData.id) ?? [];

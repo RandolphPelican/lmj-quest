@@ -39,63 +39,67 @@ export interface RoomData {
 }
 
 // Room 01: Boot Up
-// Player spawns at (15,2). Blue Z-barrier wall (cols 11-22, rows 4-11) divides the room.
-// Left pocket: key at (3,6), chest at (3,13) [mp_large fixed loot], two signs.
-// Right side: mana shrine at (20,13) behind pillar corridor, sentinel trigger at (20,8).
+// Player spawns at (2,8) — far left mid. Double-wide Z barrier (cols 14-15, rows 1-15) runs
+// full room height. Left half: key (6,4), chest (6,12) [mp_large fixed], two signs, shrine (11,8).
+// Right half: outcroppings force S-path, sentinel wakes at (22,5), east door at (29,13).
 // Barrier dissolves when player stands within 48px of shrine with 20+ MP.
 export const ROOM_01: RoomData = {
   id: 'room_01',
   name: 'Boot Up',
   layout: [
-    '##############################',  // row 0
-    '#............................#',  // row 1
-    '#..G.........................#',  // row 2  — Dad's sign at (3,2)
-    '#............................#',  // row 3
-    '#..........ZZZZZZZZZZZZ......#',  // row 4  — barrier top, Z at cols 11-22
-    '#..........Z.................#',  // row 5  — left barrier wall at col 11
-    '#..........Z.................#',  // row 6
-    '#..........Z.................#',  // row 7
-    '#..........Z.................#',  // row 8  — sentinel trigger at col 20 (open floor)
-    '#..........Z.................#',  // row 9
-    '#......G...Z.................#',  // row 10 — hint sign G at (7,10), barrier wall at col 11
-    '#..........ZZZZZZZZZZZZ......#',  // row 11 — barrier bottom
-    '#....PPPPPPPPPP..............#',  // row 12 — switchback pillar top
-    '#....P..............G........#',  // row 13 — left pillar, shrine sign G at (20,13)
-    '#....PPPPPPPPPP..............#',  // row 14 — switchback pillar bottom
-    '#............................#',  // row 15
-    '###############D##############',  // row 16 — south door to room_02
+    '##############################',  // row 0  — north wall
+    '#.............ZZ..PP.........#',  // row 1  — outcrop 1 top (PP cols 18-19)
+    '#..G..........ZZ..PP.........#',  // row 2  — Dad sign at col 3
+    '#.............ZZ..PP.........#',  // row 3
+    '#.............ZZ..PP.........#',  // row 4  — key at (6,4)
+    '#.............ZZ..PP.........#',  // row 5  — sentinel trigger at (22,5)
+    '#.............ZZ..PP.........#',  // row 6
+    '#.............ZZ..PP..PP.....#',  // row 7  — outcrop 2 starts (PP cols 22-23)
+    '#.............ZZ..PP..PP.....#',  // row 8  — overlap zone; shrine at (11,8)
+    '#.............ZZ..PP..PP.....#',  // row 9  — overlap zone bottom
+    '#.............ZZ......PP.....#',  // row 10 — outcrop 1 ends
+    '#.............ZZ......PP.....#',  // row 11
+    '#..G..........ZZ......PP.....#',  // row 12 — hint sign at col 3; chest at (6,12)
+    '#.............ZZ......PP.....D',  // row 13 — east door at col 29
+    '#.............ZZ......PP.....#',  // row 14
+    '#.............ZZ......PP.....#',  // row 15
+    '##############################',  // row 16 — south wall
   ],
   doors: {
-    '15,16': { roomId: 'room_02', spawnTile: { x: 15, y: 1 } },
+    '29,13': { roomId: 'room_02', spawnTile: { x: 1, y: 13 } },
   },
-  keys:   [{ tileX: 3, tileY: 6,  tier: 'bronze' }],
-  chests: [{ tileX: 3, tileY: 13, tier: 'bronze', fixedLoot: 'mp_large' }],
+  keys:   [{ tileX: 6, tileY: 4,  tier: 'bronze' }],
+  chests: [{ tileX: 6, tileY: 12, tier: 'bronze', fixedLoot: 'mp_large' }],
   signs: {
-    '3,2':   "Lincoln Mark James,\nI built this especially for you\nto show you that you can do\nanything you want in this life\nand I love you for eternity.\nHave fun!",
-    '7,10':  "Your magic near the shrine\nreveals the path forward.\nWatch your mana meter.",
-    '20,13': "Mana powers your magic attacks\nAND opens ancient shrines.\nSpend it wisely, hero. — Dad",
+    '3,2':  "Lincoln Mark James,\nI built this especially for you\nto show you that you can do\nanything you want in this life\nand I love you for eternity.\nHave fun!",
+    '3,12': "Your magic near the shrine\nreveals the path forward.\nWatch your mana meter. — Dad",
   },
   barriers: [{
     id: 'barrier_01',
     tiles: [
-      { x: 11, y: 4  }, { x: 12, y: 4  }, { x: 13, y: 4  },
-      { x: 14, y: 4  }, { x: 15, y: 4  }, { x: 16, y: 4  },
-      { x: 17, y: 4  }, { x: 18, y: 4  }, { x: 19, y: 4  },
-      { x: 20, y: 4  }, { x: 21, y: 4  }, { x: 22, y: 4  },
-      { x: 11, y: 5  }, { x: 11, y: 6  }, { x: 11, y: 7  },
-      { x: 11, y: 8  }, { x: 11, y: 9  }, { x: 11, y: 10 },
-      { x: 11, y: 11 }, { x: 12, y: 11 }, { x: 13, y: 11 },
-      { x: 14, y: 11 }, { x: 15, y: 11 }, { x: 16, y: 11 },
-      { x: 17, y: 11 }, { x: 18, y: 11 }, { x: 19, y: 11 },
-      { x: 20, y: 11 }, { x: 21, y: 11 }, { x: 22, y: 11 },
+      { x: 14, y: 1  }, { x: 15, y: 1  },
+      { x: 14, y: 2  }, { x: 15, y: 2  },
+      { x: 14, y: 3  }, { x: 15, y: 3  },
+      { x: 14, y: 4  }, { x: 15, y: 4  },
+      { x: 14, y: 5  }, { x: 15, y: 5  },
+      { x: 14, y: 6  }, { x: 15, y: 6  },
+      { x: 14, y: 7  }, { x: 15, y: 7  },
+      { x: 14, y: 8  }, { x: 15, y: 8  },
+      { x: 14, y: 9  }, { x: 15, y: 9  },
+      { x: 14, y: 10 }, { x: 15, y: 10 },
+      { x: 14, y: 11 }, { x: 15, y: 11 },
+      { x: 14, y: 12 }, { x: 15, y: 12 },
+      { x: 14, y: 13 }, { x: 15, y: 13 },
+      { x: 14, y: 14 }, { x: 15, y: 14 },
+      { x: 14, y: 15 }, { x: 15, y: 15 },
     ],
   }],
   manaShrines: [{
-    tileX: 20, tileY: 13,
+    tileX: 11, tileY: 8,
     mpCost: 20,
     triggersBarrier: 'barrier_01',
   }],
-  sentinelTriggers: [{ tileX: 20, tileY: 8 }],
+  sentinelTriggers: [{ tileX: 22, tileY: 5 }],
 };
 
 // Room 2: The Crooked Walk

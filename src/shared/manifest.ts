@@ -56,7 +56,7 @@ export function validateManifest(manifest: LevelManifest): void {
 
 export const LEVEL_1_MANIFEST: LevelManifest = {
   levelId:        'level_01',
-  requiredKeys:   { bronze: 3 },
-  requiredChests: { bronze: 4 },
+  requiredKeys:   { bronze: 1 },
+  requiredChests: { bronze: 1 },
   lockedDoors:    { bronze: 0 },
 };
