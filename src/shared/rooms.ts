@@ -32,7 +32,7 @@ export const ROOM_01: RoomData = {
   layout: [
     '###############D##############',
     '#............................#',
-    '#............................#',
+    '#.........G..................#',
     '#......PP............PP......#',
     '#......PP............PP......#',
     '#............................#',
@@ -56,6 +56,9 @@ export const ROOM_01: RoomData = {
   },
   keys:   [{ tileX: 5, tileY: 4, tier: 'bronze' }],
   chests: [{ tileX: 24, tileY: 4, tier: 'bronze' }],
+  signs: {
+    '10,2': "DAD'S WISDOM #1\nSome roads look wrong\nbut take you exactly\nwhere you need to go.",
+  },
 };
 
 // Room 2: The Crooked Walk

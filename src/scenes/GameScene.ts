@@ -20,6 +20,7 @@ import { EnemyProjectile } from '../game/entities/EnemyProjectile';
 import { PauseManager } from '../game/PauseManager';
 import type { CharacterDefinition } from '../shared/characters';
 import { Inventory } from '../game/Inventory';
+import { SignPopup } from '../game/SignPopup';
 import { KeyItem } from '../game/entities/KeyItem';
 import { Chest } from '../game/entities/Chest';
 
@@ -62,6 +63,8 @@ export class GameScene extends Phaser.Scene {
   private aiDebugOn = false;
 
   private inventory!: Inventory;
+  private signPopup!: SignPopup;
+  private signPopupOpen = false;
   private readonly keyMap   = new Map<string, KeyItem[]>();
   private readonly chestMap = new Map<string, Chest[]>();
   private chestColliders: Phaser.Physics.Arcade.Collider[] = [];
@@ -111,6 +114,7 @@ export class GameScene extends Phaser.Scene {
     this.eKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.O);
 
     this.pauseManager = new PauseManager(this);
+    this.signPopup    = new SignPopup(this, CANVAS_W, CANVAS_H);
     this.hud          = new HUD(this, this.selectedCharacter);
     this.hud.setPauseCallback(() => this.pauseManager.toggle());
     this.pauseManager.setOnPauseStateChange((paused) => this.hud.setPauseState(paused));
@@ -143,6 +147,53 @@ export class GameScene extends Phaser.Scene {
     this.pauseManager.checkInput();
     if (this.pauseManager.isPaused()) return;
     if (this.transitioning) return;
+
+    // ── O key: sign popup + chest interaction ─────────────────────────────────
+    if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+      if (this.signPopupOpen) {
+        this.signPopup.hide();
+        this.signPopupOpen = false;
+        this.player.enableInput();
+      } else {
+        const tx = this.player.getTileX();
+        const ty = this.player.getTileY();
+        const adjacent = [
+          { x: tx + 1, y: ty },
+          { x: tx - 1, y: ty },
+          { x: tx,     y: ty + 1 },
+          { x: tx,     y: ty - 1 },
+        ];
+        let signText: string | null = null;
+        for (const t of adjacent) {
+          const tFlags = this.currentRoom.getFlagsAt(
+            PLAYFIELD_X + t.x * TILE_SIZE + TILE_SIZE / 2,
+            PLAYFIELD_Y + t.y * TILE_SIZE + TILE_SIZE / 2,
+          );
+          if (tFlags & TileFlag.Sign) {
+            signText = this.currentRoom.roomData.signs?.[`${t.x},${t.y}`] ?? '...';
+            break;
+          }
+        }
+        if (signText !== null) {
+          this.signPopup.show(signText);
+          this.signPopupOpen = true;
+          this.player.disableInput();
+          (this.player.getPhysicsObject().body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
+        } else {
+          for (const chest of this.chestMap.get(this.currentRoom.roomData.id) ?? []) {
+            if (!chest.isOpen()) {
+              const dx = chest.getX() - this.player.getX();
+              const dy = chest.getY() - this.player.getY();
+              if (Math.sqrt(dx * dx + dy * dy) <= 48 && this.inventory.useKey(chest.getTier())) {
+                chest.open();
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+    if (this.signPopupOpen) return;
 
     const px    = this.player.getX();
     const py    = this.player.getY();
@@ -248,20 +299,6 @@ export class GameScene extends Phaser.Scene {
       if (!item.isCollected() && this.aabbOverlap(this.player.getPhysicsObject(), item.getPhysicsCarrier())) {
         item.collect();
         this.inventory.addKey(item.getTier());
-      }
-    }
-
-    // ── Chest interaction ─────────────────────────────────────────────────────
-    if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
-      for (const chest of this.chestMap.get(this.currentRoom.roomData.id) ?? []) {
-        if (!chest.isOpen()) {
-          const dx = chest.getX() - this.player.getX();
-          const dy = chest.getY() - this.player.getY();
-          if (Math.sqrt(dx * dx + dy * dy) <= 48 && this.inventory.useKey(chest.getTier())) {
-            chest.open();
-            break;
-          }
-        }
       }
     }
 
