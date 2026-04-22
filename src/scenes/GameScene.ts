@@ -30,6 +30,13 @@ import { ManaShrine } from '../game/entities/ManaShrine';
 import { Sentinel } from '../game/entities/Sentinel';
 import { ForkBombJr } from '../game/entities/ForkBomb';
 import { Deadlock } from '../game/entities/Deadlock';
+import { SegFault } from '../game/entities/SegFault';
+import { RaceCondition } from '../game/entities/RaceCondition';
+import Gaslight from '../game/entities/Gaslight';
+import PromptInjection from '../game/entities/PromptInjection';
+import MemoryLeak from '../game/entities/MemoryLeak';
+import Hallucination from '../game/entities/Hallucination';
+import TechnicalDebt from '../game/entities/TechnicalDebt';
 
 const CANVAS_W = 960;
 const CANVAS_H = 640;
@@ -468,7 +475,7 @@ export class GameScene extends Phaser.Scene {
       const roomEnemies = this.enemyMap.get(this.currentRoom.roomData.id) ?? [];
       // Block until sentinel is in killedSet (authoritative — isDead() alone fires in kill frame)
       if (sentinels.some(s => !this.sentinelKilledSet.has(s))) return;
-      if (roomEnemies.length > 0 && !roomEnemies.every(e => e.isDead())) return;
+      if (roomEnemies.length > 0 && !roomEnemies.every(e => e.isDead() || e instanceof PromptInjection)) return;
       this.startTransition(door, this.slideDir(tx, ty));
       return;
     }
@@ -550,62 +557,70 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createEnemiesForRoom(roomId: string): Enemy[] {
-    if (roomId === 'room_01') {
-      return []; // Sentinel is managed separately via sentinelMap
-    }
+    if (roomId === 'room_01') return []; // Sentinel managed separately via sentinelMap
+
+    const tx = (col: number) => PLAYFIELD_X + col * TILE_SIZE + TILE_SIZE / 2;
+    const ty = (row: number) => PLAYFIELD_Y + row * TILE_SIZE + TILE_SIZE / 2;
+
     if (roomId === 'room_02') {
-      return [new StackOverflow(
-        this,
-        PLAYFIELD_X +  4 * TILE_SIZE + TILE_SIZE / 2,
-        PLAYFIELD_Y + 13 * TILE_SIZE + TILE_SIZE / 2,
-      )];
+      return [
+        new StackOverflow(this, tx(10), ty(8)),
+        new StackOverflow(this, tx(20), ty(8)),
+      ];
     }
-    if (roomId === 'room_03') {
-      return [new InfiniteLoop(
-        this,
-        PLAYFIELD_X + 24 * TILE_SIZE + TILE_SIZE / 2,
-        PLAYFIELD_Y + 12 * TILE_SIZE + TILE_SIZE / 2,
-      )];
-    }
+    if (roomId === 'room_03') return []; // safe room — no enemies
     if (roomId === 'room_04') {
-      return [new StackOverflow(
-        this,
-        PLAYFIELD_X + 15 * TILE_SIZE + TILE_SIZE / 2,
-        PLAYFIELD_Y +  8 * TILE_SIZE + TILE_SIZE / 2,
-      )];
+      return [new InfiniteLoop(this, tx(25), ty(8))];
     }
     if (roomId === 'room_05') {
       return [
-        new NullPointer(this, PLAYFIELD_X +  8 * TILE_SIZE + TILE_SIZE / 2, PLAYFIELD_Y + 7 * TILE_SIZE + TILE_SIZE / 2),
-        new NullPointer(this, PLAYFIELD_X + 12 * TILE_SIZE + TILE_SIZE / 2, PLAYFIELD_Y + 9 * TILE_SIZE + TILE_SIZE / 2),
+        new Gaslight(this,    tx(7),  ty(13)),
+        new Gaslight(this,    tx(22), ty(4)),
+        new NullPointer(this, tx(15), ty(8)),
+      ];
+    }
+    if (roomId === 'room_06') {
+      return [
+        new Hallucination(this, tx(10), ty(8)),
+        new Hallucination(this, tx(20), ty(8)),
       ];
     }
     if (roomId === 'room_07') {
-      return [new InfiniteLoop(
-        this,
-        PLAYFIELD_X + 22 * TILE_SIZE + TILE_SIZE / 2,
-        PLAYFIELD_Y +  8 * TILE_SIZE + TILE_SIZE / 2,
-      )];
+      return [
+        new MemoryLeak(this,   tx(25), ty(8)),
+        new StackOverflow(this, tx(10), ty(8)),
+      ];
+    }
+    if (roomId === 'room_08') {
+      // Room 08: PromptInjection enemies are excluded from the door-seal check
+      // (line 471 above) — door opens when all non-PI enemies are dead, because
+      // PromptInjections only retaliate when attacked, so a pacifist run is valid.
+      return [
+        new PromptInjection(this, tx(8),  ty(8)),
+        new PromptInjection(this, tx(15), ty(4)),
+        new PromptInjection(this, tx(22), ty(8)),
+        new NullPointer(this,     tx(15), ty(13)),
+      ];
     }
     if (roomId === 'room_09') {
       return [
-        new NullPointer(this,   PLAYFIELD_X +  3 * TILE_SIZE + TILE_SIZE / 2, PLAYFIELD_Y +  2 * TILE_SIZE + TILE_SIZE / 2),
-        new StackOverflow(this, PLAYFIELD_X + 26 * TILE_SIZE + TILE_SIZE / 2, PLAYFIELD_Y + 14 * TILE_SIZE + TILE_SIZE / 2),
-        new InfiniteLoop(this,  PLAYFIELD_X + 26 * TILE_SIZE + TILE_SIZE / 2, PLAYFIELD_Y +  2 * TILE_SIZE + TILE_SIZE / 2),
+        new TechnicalDebt(this, tx(15), ty(4)),
+        new InfiniteLoop(this,  tx(15), ty(13)),
       ];
     }
     if (roomId === 'room_10') {
+      // TODO (Phase 4.6): replace with full wave system (BitFlip + Deadlock wave 1,
+      // then ForkBomb + RaceCondition wave 2 — wave 2 spawns only after wave 1 cleared)
       return [
-        new NullPointer(this,  PLAYFIELD_X + 13 * TILE_SIZE + TILE_SIZE / 2, PLAYFIELD_Y + 6 * TILE_SIZE + TILE_SIZE / 2),
-        new InfiniteLoop(this, PLAYFIELD_X + 17 * TILE_SIZE + TILE_SIZE / 2, PLAYFIELD_Y + 6 * TILE_SIZE + TILE_SIZE / 2),
+        new NullPointer(this, tx(10), ty(8)),
+        new NullPointer(this, tx(20), ty(8)),
       ];
     }
     if (roomId === 'room_11') {
-      return [new StackOverflow(
-        this,
-        PLAYFIELD_X + 15 * TILE_SIZE + TILE_SIZE / 2,
-        PLAYFIELD_Y +  8 * TILE_SIZE + TILE_SIZE / 2,
-      )];
+      return [
+        new SegFault(this,      tx(10), ty(8)),
+        new RaceCondition(this, tx(20), ty(8)),
+      ];
     }
     return [];
   }

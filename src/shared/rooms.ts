@@ -103,343 +103,343 @@ export const ROOM_01: RoomData = {
   sentinelTriggers: [{ tileX: 22, tileY: 5 }],
 };
 
-// Room 2: The Crooked Walk
-// Snake-pillar maze with a tar patch. N door → room_05, S door → room_01, E door → room_04
+// Room 02: The Approach — first real combat. Two StackOverflows, player learns cover.
 export const ROOM_02: RoomData = {
   id: 'room_02',
-  name: 'The Crooked Walk',
+  name: 'The Approach',
   layout: [
-    '###############D##############',
-    '#............................#',
-    '#..PPPPPPPP..................#',
-    '#............................#',
-    '#............................#',
-    '#..............PPPPPPPP......#',
-    '#............................#',
-    '#............TTTT............#',
-    '#............TTTT............D',
-    '#............TTTT............#',
-    '#............TTTT............#',
-    '#......PPPPPPPP..............#',
-    '#............................#',
-    '#............................#',
-    '#..................PPPPPPPP..#',
-    '#............................#',
-    '###############D##############',
+    '###############D##############',  // row 0  — north door to room_03
+    '#............................#',  // row 1
+    '#..PPPP..................PPP.#',  // row 2  — left cover
+    '#..PPPP..................PPP.#',  // row 3
+    '#............................#',  // row 4
+    '#............................#',  // row 5
+    '#........PPPP.PPPP...........#',  // row 6  — center pillars
+    '#........PPPP.PPPP...........#',  // row 7
+    '#............................#',  // row 8
+    '#............................#',  // row 9
+    '#........PPPP.PPPP...........#',  // row 10
+    '#........PPPP.PPPP...........#',  // row 11
+    '#............................#',  // row 12
+    '#..G.........................#',  // row 13 — sign
+    '#..PPP...................PPPP#',  // row 14 — right cover
+    '#..PPP...................PPPP#',  // row 15
+    '###############D##############',  // row 16 — south door to room_01
+  ],
+  doors: {
+    '15,0':  { roomId: 'room_03', spawnTile: { x: 15, y: 15 } },
+    '15,16': { roomId: 'room_01', spawnTile: { x: 28, y: 13 } },
+  },
+  signs: {
+    '3,13': "[RANDOLPH FILLS — theme: first steps, take cover, breathe]",
+  },
+};
+
+// Room 03: The Quiet Hall — SAFE ROOM. No enemies, heal tiles, free bronze chest, Dad sign.
+export const ROOM_03: RoomData = {
+  id: 'room_03',
+  name: 'The Quiet Hall',
+  layout: [
+    '###############D##############',  // row 0
+    '#............................#',  // row 1
+    '#..HH......................HH#',  // row 2  — heal tiles
+    '#..HH......................HH#',  // row 3
+    '#............................#',  // row 4
+    '#............................#',  // row 5
+    '#.............G..............#',  // row 6  — sign
+    '#............................#',  // row 7
+    '#............................#',  // row 8
+    '#............................#',  // row 9
+    '#............................#',  // row 10
+    '#............................#',  // row 11
+    '#............................#',  // row 12
+    '#..HH......................HH#',  // row 13 — heal tiles
+    '#..HH......................HH#',  // row 14
+    '#............................#',  // row 15
+    '###############D##############',  // row 16
+  ],
+  doors: {
+    '15,0':  { roomId: 'room_04', spawnTile: { x: 15, y: 15 } },
+    '15,16': { roomId: 'room_02', spawnTile: { x: 15, y: 1  } },
+  },
+  chests: [{ tileX: 15, tileY: 8, tier: 'bronze' }],
+  signs: {
+    '14,6': "[RANDOLPH FILLS — theme: safe rooms are a gift, take what's offered]",
+  },
+};
+
+// Room 04: The Snake Pit — hazard corridor. Lava forces lane commitment, InfiniteLoop kites from the back.
+export const ROOM_04: RoomData = {
+  id: 'room_04',
+  name: 'The Snake Pit',
+  layout: [
+    '###############D##############',  // row 0  — north to room_05
+    '#............................#',  // row 1
+    '#..G.........................#',  // row 2  — sign
+    '#............................#',  // row 3
+    '#......VVVVVVVVVVVVVV........#',  // row 4  — lava lane 1
+    '#......VVVVVVVVVVVVVV........#',  // row 5
+    '#............................#',  // row 6
+    '#............................#',  // row 7
+    '#...VVVVVV........VVVVVVV....#',  // row 8  — split lava with gap
+    '#...VVVVVV........VVVVVVV....#',  // row 9
+    '#............................#',  // row 10
+    '#............................#',  // row 11
+    '#......VVVVVVVVVVVVVV........#',  // row 12 — lava lane 2
+    '#......VVVVVVVVVVVVVV........#',  // row 13
+    '#............................#',  // row 14
+    '#............................#',  // row 15
+    '###############D##############',  // row 16 — south to room_03
   ],
   doors: {
     '15,0':  { roomId: 'room_05', spawnTile: { x: 15, y: 15 } },
-    '15,16': { roomId: 'room_01', spawnTile: { x: 15, y: 1  } },
-    '29,8':  { roomId: 'room_04', spawnTile: { x: 1,  y: 8  } },
+    '15,16': { roomId: 'room_03', spawnTile: { x: 15, y: 1  } },
   },
-};
-
-// Room 3: The Puzzle Hall
-// Locked door blocks south exit, pressure plate in spike ring, sign near entrance
-export const ROOM_03: RoomData = {
-  id: 'room_03',
-  name: 'The Puzzle Hall',
-  layout: [
-    '###############D##############',
-    '#............................#',
-    '#.............G..............#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............SSSSS...........#',
-    '#............S...S...........#',
-    '#............S.B.S...........#',
-    '#............S...S...........#',
-    '#............SSSSS...........#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '###############L##############',
-  ],
-  doors: {
-    '15,0':  { roomId: 'room_01', spawnTile: { x: 15, y: 1  } },
-    '15,16': { roomId: 'room_01', spawnTile: { x: 15, y: 15 } },
-  },
-  pressurePlates: [
-    {
-      tileX: 15,
-      tileY: 8,
-      opensLockedDoorAt: { x: 15, y: 16 },
-    },
-  ],
+  keys: [{ tileX: 3, tileY: 3, tier: 'bronze' }],
   signs: {
-    '14,2': 'The way opens to those who step lightly. Watch the spikes.',
+    '3,2': "[RANDOLPH FILLS — theme: the only way through is through]",
   },
 };
 
-// Room 4: The Gauntlet
-// Narrow central corridor, pillar walls lining both sides, no south exit
-// Accessed from room_02's east door, exits via north door back to room_02
-export const ROOM_04: RoomData = {
-  id: 'room_04',
-  name: 'The Gauntlet',
-  layout: [
-    '###############D##############',
-    '#............................#',
-    '#.PPPPPPPPPPPPPPPPPPPPPPPPP..#',
-    '#............................#',
-    '#............................#',
-    '#.PPPPPPPPPPPPPPPPPPPPPPPPP..#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#.PPPPPPPPPPPPPPPPPPPPPPPPP..#',
-    '#............................#',
-    '#............................#',
-    '#.PPPPPPPPPPPPPPPPPPPPPPPPP..#',
-    '#............................#',
-    '#............................#',
-    '##############################',
-  ],
-  doors: {
-    '15,0': { roomId: 'room_02', spawnTile: { x: 15, y: 15 } },
-  },
-  signs: {
-    '1,1': "It's not about going around\nthe obstacle.\nIt's about going through it.\n— Dad",
-  },
-};
-
-// Room 5: The Aquarium
-// Large tar pit in the center, dry edges only. Enemies stand in tar (they move normal speed, player doesn't).
-// Bronze key on dry east edge. N door → room_09, S door → room_02, E door → room_06
+// Room 05: The Mimic's Den — Gaslight teaching room. Open floor with pillar pockets, mimics hide in plain sight.
 export const ROOM_05: RoomData = {
   id: 'room_05',
-  name: 'The Aquarium',
+  name: "The Mimic's Den",
   layout: [
-    '###############D##############',
-    '#............................#',
-    '#............................#',
-    '#....TTTTTTTTTTTTTTTTTTTT....#',
-    '#....TTTTTTTTTTTTTTTTTTTT....#',
-    '#....TTTTTTTTTTTTTTTTTTTT....#',
-    '#....TTTTTTTTTTTTTTTTTTTT....#',
-    '#....TTTTTTTTTTTTTTTTTTTT....#',
-    '#....TTTTTTTTTTTTTTTTTTTT....D',
-    '#....TTTTTTTTTTTTTTTTTTTT....#',
-    '#....TTTTTTTTTTTTTTTTTTTT....#',
-    '#....TTTTTTTTTTTTTTTTTTTT....#',
-    '#....TTTTTTTTTTTTTTTTTTTT....#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '###############D##############',
-  ],
-  doors: {
-    '15,0':  { roomId: 'room_09', spawnTile: { x: 15, y: 15 } },
-    '15,16': { roomId: 'room_02', spawnTile: { x: 15, y: 1  } },
-    '29,8':  { roomId: 'room_06', spawnTile: { x: 1,  y: 8  } },
-  },
-  keys: [{ tileX: 26, tileY: 8, tier: 'bronze' }],
-};
-
-// Room 6: The Safe Room
-// Clean open floor, heal tiles in corners, no enemies, warm feeling
-// W door → room_05, S door → room_07
-export const ROOM_06: RoomData = {
-  id: 'room_06',
-  name: 'The Safe Room',
-  layout: [
-    '##############################',
-    '#............................#',
-    '#.HH......................HH.#',
-    '#.HH......................HH.#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    'D............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#.HH......................HH.#',
-    '#.HH......................HH.#',
-    '###############D##############',
-  ],
-  doors: {
-    '0,8':   { roomId: 'room_05', spawnTile: { x: 28, y: 8  } },
-    '15,16': { roomId: 'room_07', spawnTile: { x: 15, y: 1  } },
-  },
-  signs: {
-    '14,8': "You made it this far.\nDad is proud of you.\nRest up, hero.",
-  },
-};
-
-// Room 7: The Pillar Maze
-// Dense irregular pillar grid, hard to navigate
-// N door → room_06, E door → room_08, S door → room_10
-// Bronze chest center-east, hidden behind pillars
-export const ROOM_07: RoomData = {
-  id: 'room_07',
-  name: 'The Pillar Maze',
-  layout: [
-    '###############D##############',
-    '#............................#',
-    '#.PP.....PP.....PP.....PP....#',
-    '#.PP.....PP.....PP.....PP....#',
-    '#............................#',
-    '#....PP.....PP.....PP.....PP.#',
-    '#....PP.....PP.....PP.....PP.#',
-    '#............................#',
-    'D...PP.....PP.....PP.....PP..D',
-    '#............................#',
-    '#....PP.....PP.....PP.....PP.#',
-    '#....PP.....PP.....PP.....PP.#',
-    '#............................#',
-    '#.PP.....PP.....PP.....PP....#',
-    '#.PP.....PP.....PP.....PP....#',
-    '#............................#',
-    '###############D##############',
+    '###############D##############',  // row 0
+    '#............................#',  // row 1
+    '#..G.........................#',  // row 2  — sign
+    '#............................#',  // row 3
+    '#.....PP..............PP.....#',  // row 4  — corner pillars
+    '#.....PP..............PP.....#',  // row 5
+    '#............................#',  // row 6
+    '#............................#',  // row 7
+    '#.............PPPP...........#',  // row 8  — center cover
+    '#.............PPPP...........#',  // row 9
+    '#............................#',  // row 10
+    '#............................#',  // row 11
+    '#.....PP..............PP.....#',  // row 12 — corner pillars
+    '#.....PP..............PP.....#',  // row 13
+    '#............................#',  // row 14
+    '#............................#',  // row 15
+    '###############D##############',  // row 16
   ],
   doors: {
     '15,0':  { roomId: 'room_06', spawnTile: { x: 15, y: 15 } },
-    '29,8':  { roomId: 'room_08', spawnTile: { x: 1,  y: 8  } },
-    '15,16': { roomId: 'room_10', spawnTile: { x: 15, y: 1  } },
-  },
-  chests: [{ tileX: 24, tileY: 8, tier: 'bronze' }],
-};
-
-// Room 8: The Three Plates
-// Open room, three pressure plates visible. W door → room_07 only.
-export const ROOM_08: RoomData = {
-  id: 'room_08',
-  name: 'The Three Plates',
-  layout: [
-    '##############################',
-    '#............................#',
-    '#............................#',
-    '#...B........................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    'D..............B.............#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#.....................B......#',
-    '#............................#',
-    '##############################',
-  ],
-  doors: {
-    '0,8': { roomId: 'room_07', spawnTile: { x: 28, y: 8 } },
+    '15,16': { roomId: 'room_04', spawnTile: { x: 15, y: 1  } },
   },
   signs: {
-    '14,1': "Sometimes you have to press\nall the right buttons.\nIn games AND in life. — Dad",
+    '3,2': "[RANDOLPH FILLS — theme: not every gift is a gift, look before you grab]",
   },
 };
 
-// Room 9: The Ambush
-// Deceptively open, three enemies hidden near corners away from south spawn point
-// S door → room_05. Bronze chest near top.
-export const ROOM_09: RoomData = {
-  id: 'room_09',
-  name: 'The Ambush',
+// Room 06: The Echo Chamber — Hallucination teaching room. Open space, rhythm-reading puzzle.
+// Wide open layout is intentional — Hallucinations need room to drift and teleport.
+// Walls would neutralize the mechanic.
+export const ROOM_06: RoomData = {
+  id: 'room_06',
+  name: 'The Echo Chamber',
   layout: [
-    '##############################',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '###############D##############',
-  ],
-  doors: {
-    '15,16': { roomId: 'room_05', spawnTile: { x: 15, y: 1 } },
-  },
-  chests: [{ tileX: 15, tileY: 3, tier: 'bronze' }],
-};
-
-// Room 10: The Arena
-// Pillar ring forming a rough circle in the center, enemies inside
-// N door → room_07, E door → room_11, S door → room_12
-// Bronze key inside the ring — must enter to get it
-export const ROOM_10: RoomData = {
-  id: 'room_10',
-  name: 'The Arena',
-  layout: [
-    '###############D##############',
-    '#............................#',
-    '#.......PPPPPPPPP............#',
-    '#......PP.......PP...........#',
-    '#.....PP.........PP..........#',
-    '#.....P...........P..........#',
-    '#.....P...........P..........#',
-    '#.....P...........P..........#',
-    'D.....PP.........PP..........D',
-    '#......PP.......PP...........#',
-    '#.......PPPPPPPPP............#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '#............................#',
-    '###############D##############',
+    '###############D##############',  // row 0
+    '#............................#',  // row 1
+    '#..G.........................#',  // row 2  — sign
+    '#............................#',  // row 3
+    '#............................#',  // row 4
+    '#............................#',  // row 5
+    '#............................#',  // row 6
+    '#............................#',  // row 7
+    '#............................#',  // row 8
+    '#............................#',  // row 9
+    '#............................#',  // row 10
+    '#............................#',  // row 11
+    '#............................#',  // row 12
+    '#............................#',  // row 13
+    '#............................#',  // row 14
+    '#............................#',  // row 15
+    '###############D##############',  // row 16
   ],
   doors: {
     '15,0':  { roomId: 'room_07', spawnTile: { x: 15, y: 15 } },
-    '29,8':  { roomId: 'room_11', spawnTile: { x: 1,  y: 8  } },
-    '15,16': { roomId: 'room_12', spawnTile: { x: 15, y: 1  } },
+    '15,16': { roomId: 'room_05', spawnTile: { x: 15, y: 1  } },
   },
-  keys: [{ tileX: 15, tileY: 6, tier: 'bronze' }],
+  chests: [{ tileX: 26, tileY: 8, tier: 'bronze' }],
+  signs: {
+    '3,2': "[RANDOLPH FILLS — theme: timing beats strength]",
+  },
 };
 
-// Room 11: The Lava Moat
-// Lava ring around a center island with a bronze chest on it
-// Player must cross lava (taking tick damage) to reach island and fight the enemy
-// W door → room_10
-export const ROOM_11: RoomData = {
-  id: 'room_11',
-  name: 'The Lava Moat',
+// Room 07: The Chorus — MemoryLeak teaching room. Parent in back, patrol in middle, player must prioritize.
+export const ROOM_07: RoomData = {
+  id: 'room_07',
+  name: 'The Chorus',
   layout: [
-    '##############################',
-    '#............................#',
-    '#............................#',
-    '#...VVVVVVVVVVVVVVVVVVVVVV...#',
-    '#...VVVVVVVVVVVVVVVVVVVVVV...#',
-    '#...VV..................VV...#',
-    '#...VV..................VV...#',
-    '#...VV..................VV...#',
-    'D...VV..................VV...#',
-    '#...VV..................VV...#',
-    '#...VV..................VV...#',
-    '#...VV..................VV...#',
-    '#...VVVVVVVVVVVVVVVVVVVVVV...#',
-    '#...VVVVVVVVVVVVVVVVVVVVVV...#',
-    '#............................#',
-    '#............................#',
-    '##############################',
+    '###############D##############',  // row 0
+    '#............................#',  // row 1
+    '#..G.........................#',  // row 2  — sign
+    '#............................#',  // row 3
+    '#....PPPP............PPPP....#',  // row 4
+    '#....PPPP............PPPP....#',  // row 5
+    '#............................#',  // row 6
+    '#............................#',  // row 7
+    '#............................#',  // row 8
+    '#............................#',  // row 9
+    '#............................#',  // row 10
+    '#............................#',  // row 11
+    '#....PPPP............PPPP....#',  // row 12
+    '#....PPPP............PPPP....#',  // row 13
+    '#............................#',  // row 14
+    '#............................#',  // row 15
+    '###############D##############',  // row 16
   ],
   doors: {
-    '0,8': { roomId: 'room_10', spawnTile: { x: 28, y: 8 } },
+    '15,0':  { roomId: 'room_08', spawnTile: { x: 15, y: 15 } },
+    '15,16': { roomId: 'room_06', spawnTile: { x: 15, y: 1  } },
   },
-  chests: [{ tileX: 15, tileY: 8, tier: 'bronze' }],
+  signs: {
+    '3,2': "[RANDOLPH FILLS — theme: some problems multiply if you ignore them]",
+  },
+};
+
+// Room 08: The Restraint Room — PromptInjection teaching. Three sentries, one real enemy.
+// WIRING NOTE (PROMPT B): PromptInjections never die unless attacked — the default
+// "all enemies dead" door seal would lock the player in forever if they learn to hold fire.
+// The door seal for this room must exclude PromptInjection from the "must be dead" check.
+// Flag in GameScene wiring pass — rooms.ts concern ends here.
+export const ROOM_08: RoomData = {
+  id: 'room_08',
+  name: 'The Restraint Room',
+  layout: [
+    '###############D##############',  // row 0
+    '#............................#',  // row 1
+    '#..G.........................#',  // row 2
+    '#............................#',  // row 3
+    '#............................#',  // row 4
+    '#.........PP......PP.........#',  // row 5
+    '#.........PP......PP.........#',  // row 6
+    '#............................#',  // row 7
+    '#............................#',  // row 8
+    '#............................#',  // row 9
+    '#............................#',  // row 10
+    '#.........PP......PP.........#',  // row 11
+    '#.........PP......PP.........#',  // row 12
+    '#............................#',  // row 13
+    '#............................#',  // row 14
+    '#............................#',  // row 15
+    '###############D##############',  // row 16
+  ],
+  doors: {
+    '15,0':  { roomId: 'room_09', spawnTile: { x: 15, y: 15 } },
+    '15,16': { roomId: 'room_07', spawnTile: { x: 15, y: 1  } },
+  },
+  signs: {
+    '3,2': "[RANDOLPH FILLS — theme: not everything that looks like a threat is a threat]",
+  },
+};
+
+// Room 09: The Waiting Game — TechnicalDebt teaching. Player must engage TD before it scales.
+export const ROOM_09: RoomData = {
+  id: 'room_09',
+  name: 'The Waiting Game',
+  layout: [
+    '###############D##############',  // row 0
+    '#............................#',  // row 1
+    '#..G.........................#',  // row 2
+    '#............................#',  // row 3
+    '#............................#',  // row 4
+    '#............................#',  // row 5
+    '#...PPP...............PPP....#',  // row 6
+    '#...PPP...............PPP....#',  // row 7
+    '#............................#',  // row 8
+    '#............................#',  // row 9
+    '#...PPP...............PPP....#',  // row 10
+    '#...PPP...............PPP....#',  // row 11
+    '#............................#',  // row 12
+    '#............................#',  // row 13
+    '#............................#',  // row 14
+    '#............................#',  // row 15
+    '###############D##############',  // row 16
+  ],
+  doors: {
+    '15,0':  { roomId: 'room_10', spawnTile: { x: 15, y: 15 } },
+    '15,16': { roomId: 'room_08', spawnTile: { x: 15, y: 1  } },
+  },
+  keys: [{ tileX: 15, tileY: 8, tier: 'bronze' }],
+  signs: {
+    '3,2': "[RANDOLPH FILLS — theme: deal with small problems before they become big ones]",
+  },
+};
+
+// Room 10: The Gauntlet — staged combat (wave room). Wave 1 triggers wave 2 on clear.
+// WIRING NOTE (PROMPT B): wave-spawn logic does NOT exist in GameScene yet.
+// Either implement a minimal wave system or simplify to a single wave. TB decides during
+// PROMPT B — flag only, don't build wave logic in this file.
+export const ROOM_10: RoomData = {
+  id: 'room_10',
+  name: 'The Gauntlet',
+  layout: [
+    '###############D##############',  // row 0
+    '#............................#',  // row 1
+    '#..G.........................#',  // row 2
+    '#............................#',  // row 3
+    '#............................#',  // row 4
+    '#.PP......................PP.#',  // row 5  — corner cover
+    '#.PP......................PP.#',  // row 6
+    '#............................#',  // row 7
+    '#............................#',  // row 8
+    '#............................#',  // row 9
+    '#............................#',  // row 10
+    '#.PP......................PP.#',  // row 11
+    '#.PP......................PP.#',  // row 12
+    '#............................#',  // row 13
+    '#............................#',  // row 14
+    '#............................#',  // row 15
+    '###############D##############',  // row 16
+  ],
+  doors: {
+    '15,0':  { roomId: 'room_11', spawnTile: { x: 15, y: 15 } },
+    '15,16': { roomId: 'room_09', spawnTile: { x: 15, y: 1  } },
+  },
+  chests: [{ tileX: 15, tileY: 8, tier: 'silver' }],
+  signs: {
+    '3,2': "[RANDOLPH FILLS — theme: the fight is never over until you think it is]",
+  },
+};
+
+// Room 11: The Parlor — miniboss antechamber. Two tough enemies guarding the path to Room 12.
+export const ROOM_11: RoomData = {
+  id: 'room_11',
+  name: 'The Parlor',
+  layout: [
+    '###############D##############',  // row 0  — north to room_12
+    '#............................#',  // row 1
+    '#..G.........................#',  // row 2
+    '#............................#',  // row 3
+    '#............................#',  // row 4
+    '#............................#',  // row 5
+    '#............................#',  // row 6
+    '#............................#',  // row 7
+    '#............................#',  // row 8
+    '#............................#',  // row 9
+    '#............................#',  // row 10
+    '#............................#',  // row 11
+    '#............................#',  // row 12
+    '#............................#',  // row 13
+    '#............................#',  // row 14
+    '#............................#',  // row 15
+    '###############D##############',  // row 16 — south to room_10
+  ],
+  doors: {
+    '15,0':  { roomId: 'room_12', spawnTile: { x: 15, y: 15 } },
+    '15,16': { roomId: 'room_10', spawnTile: { x: 15, y: 1  } },
+  },
+  signs: {
+    '3,2': "[RANDOLPH FILLS — theme: the last breath before the storm]",
+  },
 };
 
 // Room 12: The Antechamber
 // Solemn, clean, heal tiles flanking a locked north passage — the boss door (Phase 4.5)
-// S door → room_10. Final sign from Dad.
+// S door → room_11. Final sign from Dad.
 export const ROOM_12: RoomData = {
   id: 'room_12',
   name: 'The Antechamber',
@@ -463,7 +463,7 @@ export const ROOM_12: RoomData = {
     '###############D##############',
   ],
   doors: {
-    '15,16': { roomId: 'room_10', spawnTile: { x: 15, y: 1 } },
+    '15,16': { roomId: 'room_11', spawnTile: { x: 15, y: 1 } },
   },
   signs: {
     '14,7': "This is as far as Dad has mapped.\nThe rest is yours to discover.\nI love you, Lincoln. — Dad",
