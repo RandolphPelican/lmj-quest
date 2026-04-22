@@ -91,6 +91,8 @@ export class GameScene extends Phaser.Scene {
   private readonly sentinelKilledSet = new Set<Sentinel>();
   private readonly deadlockMap       = new Map<string, Deadlock[]>();
   private manaRefillActive = false;
+  private currentRoomSeals: Phaser.Physics.Arcade.StaticGroup | null = null;
+  private currentRoomSealCollider: Phaser.Physics.Arcade.Collider | null = null;
 
   // Configurable level spawn — override per level in future phases
   private readonly LEVEL_SPAWN = { roomId: 'room_01', tileX: 2, tileY: 8 };
@@ -312,8 +314,15 @@ export class GameScene extends Phaser.Scene {
           roomLoot.push(lootItem);
           this.lootMap.set(this.currentRoom.roomData.id, roomLoot);
         }
+        // Permanent kill: prevent the 5s base-class respawn timer from firing.
+        // Skip Sentinels — they have their own dedicated kill path above.
+        if (!(enemy instanceof Sentinel)) {
+          enemy.forceDestroy();
+        }
       }
     }
+
+    this.updateCurrentRoomSeals();
 
     // ── Sword hit detection ───────────────────────────────────────────────────
     const swordHitbox = this.player.getSwordHitbox();
@@ -538,6 +547,7 @@ export class GameScene extends Phaser.Scene {
     this.hud.setRoomName(roomData.name);
     this.triggeredPlates.clear();
     this.activateRoom(roomData);
+    this.updateCurrentRoomSeals();
 
     const enemies = this.getOrCreateRoomEnemies(roomData.id);
     for (const enemy of enemies) {
@@ -691,7 +701,9 @@ export class GameScene extends Phaser.Scene {
     for (const deadlocks of this.deadlockMap.values()) for (const d of deadlocks) d.forceDestroy();
     this.deadlockMap.clear();
     this.manaRefillActive = false;
+    this.uninstallCurrentRoomSeals();
     this.activateRoom(spawnRoomData);
+    this.updateCurrentRoomSeals();
     this.hud.updateKeys(0, 0, 0);
 
     const enemies = this.getOrCreateRoomEnemies(this.LEVEL_SPAWN.roomId);
@@ -771,6 +783,9 @@ export class GameScene extends Phaser.Scene {
         this.triggeredPlates.clear();
         oldRoom.destroy();
         this.activateRoom(destRoomData);
+
+        this.uninstallCurrentRoomSeals();  // belt-and-suspenders: destroy any carried-over seals
+        this.updateCurrentRoomSeals();     // install seals if the new room is sealed
 
         // Wire colliders for entering-room enemies; hide others
         const enteringEnemies = this.getOrCreateRoomEnemies(dest.roomId);
@@ -900,6 +915,59 @@ export class GameScene extends Phaser.Scene {
           this.physics.add.collider(this.player.getPhysicsObject(), chest.getPhysicsCarrier())
         );
       }
+    }
+  }
+
+  // ── Door seal system ─────────────────────────────────────────────────────────
+
+  private isRoomSealed(roomId: string): boolean {
+    const enemies  = this.enemyMap.get(roomId)  ?? [];
+    const sentinels = this.sentinelMap.get(roomId) ?? [];
+    const hasLivingEnemy      = enemies.some(e => !e.isDead() && !(e instanceof PromptInjection));
+    const hasUnkilledSentinel = sentinels.some(s => !this.sentinelKilledSet.has(s));
+    return hasLivingEnemy || hasUnkilledSentinel;
+  }
+
+  private installCurrentRoomSeals(): void {
+    if (this.currentRoomSeals) return;
+    const roomData = this.currentRoom.roomData;
+    const group = this.physics.add.staticGroup();
+    for (const doorKey of Object.keys(roomData.doors)) {
+      const parts = doorKey.split(',');
+      const tx = Number(parts[0]);
+      const ty = Number(parts[1]);
+      const wx = PLAYFIELD_X + tx * TILE_SIZE + TILE_SIZE / 2;
+      const wy = PLAYFIELD_Y + ty * TILE_SIZE + TILE_SIZE / 2;
+      const tile = this.physics.add.staticImage(wx, wy, '__DEFAULT');
+      tile.setVisible(false);
+      (tile.body as Phaser.Physics.Arcade.StaticBody).setSize(TILE_SIZE, TILE_SIZE);
+      tile.refreshBody();
+      group.add(tile);
+    }
+    this.currentRoomSeals = group;
+    this.currentRoomSealCollider = this.physics.add.collider(
+      this.player.getPhysicsObject(),
+      group,
+    );
+  }
+
+  private uninstallCurrentRoomSeals(): void {
+    if (this.currentRoomSealCollider) {
+      this.currentRoomSealCollider.destroy();
+      this.currentRoomSealCollider = null;
+    }
+    if (this.currentRoomSeals) {
+      this.currentRoomSeals.clear(true, true);
+      this.currentRoomSeals = null;
+    }
+  }
+
+  private updateCurrentRoomSeals(): void {
+    const sealed = this.isRoomSealed(this.currentRoom.roomData.id);
+    if (sealed && !this.currentRoomSeals) {
+      this.installCurrentRoomSeals();
+    } else if (!sealed && this.currentRoomSeals) {
+      this.uninstallCurrentRoomSeals();
     }
   }
 
