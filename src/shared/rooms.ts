@@ -124,10 +124,11 @@ export const ROOM_02: RoomData = {
     '#..G.........................#',  // row 13 — sign
     '#..PPP...................PPPP#',  // row 14 — right cover
     '#..PPP...................PPPP#',  // row 15
-    '##############################',  // row 16 — sealed (no backtrack)
+    '###############D##############',  // row 16 — south door back to previous room
   ],
   doors: {
     '15,0':  { roomId: 'room_03', spawnTile: { x: 15, y: 15 } },
+    '15,16': { roomId: 'room_01', spawnTile: { x: 28, y: 13 } },
   },
   signs: {
     '3,13': "[RANDOLPH FILLS — theme: first steps, take cover, breathe]",
@@ -155,10 +156,11 @@ export const ROOM_03: RoomData = {
     '#..HH......................HH#',  // row 13 — heal tiles
     '#..HH......................HH#',  // row 14
     '#............................#',  // row 15
-    '##############################',  // row 16 — sealed (no backtrack)
+    '###############D##############',  // row 16 — south door back to previous room
   ],
   doors: {
     '15,0':  { roomId: 'room_04', spawnTile: { x: 15, y: 15 } },
+    '15,16': { roomId: 'room_02', spawnTile: { x: 15, y: 1  } },
   },
   chests: [{ tileX: 15, tileY: 8, tier: 'bronze' }],
   signs: {
@@ -187,10 +189,11 @@ export const ROOM_04: RoomData = {
     '#......VVVVVVVVVVVVVV........#',  // row 13
     '#............................#',  // row 14
     '#............................#',  // row 15
-    '##############################',  // row 16 — sealed (no backtrack)
+    '###############D##############',  // row 16 — south door back to previous room
   ],
   doors: {
     '15,0':  { roomId: 'room_05', spawnTile: { x: 15, y: 15 } },
+    '15,16': { roomId: 'room_03', spawnTile: { x: 15, y: 1  } },
   },
   keys: [{ tileX: 3, tileY: 3, tier: 'bronze' }],
   signs: {
@@ -219,10 +222,11 @@ export const ROOM_05: RoomData = {
     '#.....PP..............PP.....#',  // row 13
     '#............................#',  // row 14
     '#............................#',  // row 15
-    '##############################',  // row 16 — sealed (no backtrack)
+    '###############D##############',  // row 16 — south door back to previous room
   ],
   doors: {
     '15,0':  { roomId: 'room_06', spawnTile: { x: 15, y: 15 } },
+    '15,16': { roomId: 'room_04', spawnTile: { x: 15, y: 1  } },
   },
   signs: {
     '3,2': "[RANDOLPH FILLS — theme: not every gift is a gift, look before you grab]",
@@ -252,10 +256,11 @@ export const ROOM_06: RoomData = {
     '#............................#',  // row 13
     '#............................#',  // row 14
     '#............................#',  // row 15
-    '##############################',  // row 16 — sealed (no backtrack)
+    '###############D##############',  // row 16 — south door back to previous room
   ],
   doors: {
     '15,0':  { roomId: 'room_07', spawnTile: { x: 15, y: 15 } },
+    '15,16': { roomId: 'room_05', spawnTile: { x: 15, y: 1  } },
   },
   chests: [{ tileX: 26, tileY: 8, tier: 'bronze' }],
   signs: {
@@ -284,10 +289,11 @@ export const ROOM_07: RoomData = {
     '#....PPPP............PPPP....#',  // row 13
     '#............................#',  // row 14
     '#............................#',  // row 15
-    '##############################',  // row 16 — sealed (no backtrack)
+    '###############D##############',  // row 16 — south door back to previous room
   ],
   doors: {
     '15,0':  { roomId: 'room_08', spawnTile: { x: 15, y: 15 } },
+    '15,16': { roomId: 'room_06', spawnTile: { x: 15, y: 1  } },
   },
   signs: {
     '3,2': "[RANDOLPH FILLS — theme: some problems multiply if you ignore them]",
@@ -319,10 +325,11 @@ export const ROOM_08: RoomData = {
     '#............................#',  // row 13
     '#............................#',  // row 14
     '#............................#',  // row 15
-    '##############################',  // row 16 — sealed (no backtrack)
+    '###############D##############',  // row 16 — south door back to previous room
   ],
   doors: {
     '15,0':  { roomId: 'room_09', spawnTile: { x: 15, y: 15 } },
+    '15,16': { roomId: 'room_07', spawnTile: { x: 15, y: 1  } },
   },
   signs: {
     '3,2': "[RANDOLPH FILLS — theme: not everything that looks like a threat is a threat]",
@@ -350,10 +357,11 @@ export const ROOM_09: RoomData = {
     '#............................#',  // row 13
     '#............................#',  // row 14
     '#............................#',  // row 15
-    '##############################',  // row 16 — sealed (no backtrack)
+    '###############D##############',  // row 16 — south door back to previous room
   ],
   doors: {
     '15,0':  { roomId: 'room_10', spawnTile: { x: 15, y: 15 } },
+    '15,16': { roomId: 'room_08', spawnTile: { x: 15, y: 1  } },
   },
   keys: [{ tileX: 15, tileY: 8, tier: 'bronze' }],
   signs: {
@@ -385,10 +393,11 @@ export const ROOM_10: RoomData = {
     '#............................#',  // row 13
     '#............................#',  // row 14
     '#............................#',  // row 15
-    '##############################',  // row 16 — sealed (no backtrack)
+    '###############D##############',  // row 16 — south door back to previous room
   ],
   doors: {
     '15,0':  { roomId: 'room_11', spawnTile: { x: 15, y: 15 } },
+    '15,16': { roomId: 'room_09', spawnTile: { x: 15, y: 1  } },
   },
   chests: [{ tileX: 15, tileY: 8, tier: 'silver' }],
   signs: {
@@ -417,10 +426,11 @@ export const ROOM_11: RoomData = {
     '#............................#',  // row 13
     '#............................#',  // row 14
     '#............................#',  // row 15
-    '##############################',  // row 16 — sealed (no backtrack)
+    '###############D##############',  // row 16 — south door back to previous room
   ],
   doors: {
     '15,0':  { roomId: 'room_12', spawnTile: { x: 15, y: 15 } },
+    '15,16': { roomId: 'room_10', spawnTile: { x: 15, y: 1  } },
   },
   signs: {
     '3,2': "[RANDOLPH FILLS — theme: the last breath before the storm]",

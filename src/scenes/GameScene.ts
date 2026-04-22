@@ -41,6 +41,11 @@ import TechnicalDebt from '../game/entities/TechnicalDebt';
 const CANVAS_W = 960;
 const CANVAS_H = 640;
 
+const DOOR_SEALED_FILL   = 0x5a1a1a;
+const DOOR_SEALED_STROKE = 0xaa3333;
+const DOOR_OPEN_FILL     = 0x8a6a2a;
+const DOOR_OPEN_STROKE   = 0xccaa44;
+
 type SlideDir = 'north' | 'south' | 'east' | 'west';
 
 type SpawnProjectileData = {
@@ -583,10 +588,12 @@ export class GameScene extends Phaser.Scene {
       return [new InfiniteLoop(this, tx(25), ty(8))];
     }
     if (roomId === 'room_05') {
+      // Corner pillars occupy cols 6-7 and 22-23 at rows 4-5 and 12-13.
+      // Center cover occupies cols 13-16 at rows 8-9. All spawns are on open floor.
       return [
-        new Gaslight(this,    tx(7),  ty(13)),
-        new Gaslight(this,    tx(22), ty(4)),
-        new NullPointer(this, tx(15), ty(8)),
+        new Gaslight(this,    tx(8),  ty(13)),    // SW corner pocket, just east of SW pillar pair
+        new Gaslight(this,    tx(21), ty(4)),     // NE corner pocket, just west of NE pillar pair
+        new NullPointer(this, tx(15), ty(11)),    // center open floor, below the center cover
       ];
     }
     if (roomId === 'room_06') {
@@ -928,6 +935,22 @@ export class GameScene extends Phaser.Scene {
     return hasLivingEnemy || hasUnkilledSentinel;
   }
 
+  private retintDoors(sealed: boolean): void {
+    const roomData = this.currentRoom.roomData;
+    const fill   = sealed ? DOOR_SEALED_FILL   : DOOR_OPEN_FILL;
+    const stroke = sealed ? DOOR_SEALED_STROKE : DOOR_OPEN_STROKE;
+    for (const doorKey of Object.keys(roomData.doors)) {
+      const parts = doorKey.split(',');
+      const tx = Number(parts[0]);
+      const ty = Number(parts[1]);
+      const rect = this.currentRoom.getVisualRectAt(tx, ty);
+      if (rect) {
+        rect.setFillStyle(fill);
+        rect.setStrokeStyle(1, stroke);
+      }
+    }
+  }
+
   private installCurrentRoomSeals(): void {
     if (this.currentRoomSeals) return;
     const roomData = this.currentRoom.roomData;
@@ -949,9 +972,11 @@ export class GameScene extends Phaser.Scene {
       this.player.getPhysicsObject(),
       group,
     );
+    this.retintDoors(true);
   }
 
   private uninstallCurrentRoomSeals(): void {
+    this.retintDoors(false);
     if (this.currentRoomSealCollider) {
       this.currentRoomSealCollider.destroy();
       this.currentRoomSealCollider = null;
@@ -968,6 +993,10 @@ export class GameScene extends Phaser.Scene {
       this.installCurrentRoomSeals();
     } else if (!sealed && this.currentRoomSeals) {
       this.uninstallCurrentRoomSeals();
+    } else {
+      // No state change, but still retint — covers first frame after room transition
+      // when seals exist (or don't) and door tiles are still at default brown.
+      this.retintDoors(sealed);
     }
   }
 
