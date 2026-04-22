@@ -467,7 +467,7 @@ export class GameScene extends Phaser.Scene {
       const sentinels   = this.sentinelMap.get(this.currentRoom.roomData.id) ?? [];
       const roomEnemies = this.enemyMap.get(this.currentRoom.roomData.id) ?? [];
       // Block until sentinel is in killedSet (authoritative — isDead() alone fires in kill frame)
-      if (sentinels.some(s => s.isSpawned() && !this.sentinelKilledSet.has(s))) return;
+      if (sentinels.some(s => !this.sentinelKilledSet.has(s))) return;
       if (roomEnemies.length > 0 && !roomEnemies.every(e => e.isDead())) return;
       this.startTransition(door, this.slideDir(tx, ty));
       return;
